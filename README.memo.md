@@ -9,3 +9,7 @@ Node.js는 백엔드 프레임워크가 아니다.
 Node.js는 JavaScript 실행 환경이다.
 Express, NestJS 같은 프레임워크가 Node.js 위에서 동작한다.
 
+---
+
+여기서 port는 3001 로 변경 , 기존의 nestjs가 3000번 사용중
+
