@@ -1,14 +1,25 @@
 import { Injectable } from '@nestjs/common';
 import { CreateMovieDto } from './dto/create-movie.dto';
 import { UpdateMovieDto } from './dto/update-movie.dto';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Movie } from './entity/movie.entity';
+import { Repository } from 'typeorm';
+import { MovieDetail } from './entity/movie-detail.entity';
+import { Genre } from 'src/genre/entity/genre.entity';
+import { Director } from 'src/director/entity/director.entity';
 
 @Injectable()
 export class MovieService {
-  create(createMovieDto: CreateMovieDto) {
-    return 'This action adds a new movie';
-  }
+  constructor(@InjectRepository(Movie) private readonly movieRepository:Repository<Movie>,
+@InjectRepository(MovieDetail) private readonly movieDetailRepository:Repository<MovieDetail>,
+@InjectRepository(Genre) private readonly genreRepository:Repository<Genre>,
+@InjectRepository(Director) private readonly directorRepository:Repository<Director>){}
 
-  findAll() {
+  async findAll() {
+    const qb= await this.movieRepository
+    .createQueryBuilder('moive')
+    .leftJoinAndSelect('movie.director','director')
+
     return `This action returns all movie`;
   }
 
