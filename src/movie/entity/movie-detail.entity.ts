@@ -1,4 +1,4 @@
-import { Column, Entity, PrimaryGeneratedColumn  } from "typeorm";
+import { Column, Entity, OneToOne, PrimaryGeneratedColumn  } from "typeorm";
 import { Movie } from "./movie.entity";
 
 @Entity()
@@ -9,6 +9,10 @@ export class MovieDetail {
     @Column()
     detail:string;
 
+    @OneToOne(
+        ()=>Movie,
+        (movie)=>movie.detail
+    )
     movie:Movie;
 
 }

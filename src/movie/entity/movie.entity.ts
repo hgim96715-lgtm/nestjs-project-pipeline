@@ -16,7 +16,7 @@ export class Movie extends BaseTable{
     // 영화는 하나의 상세정보를 가진다.
     @OneToOne(
         ()=>MovieDetail,
-        MovieDetail=>MovieDetail.id,
+        (detail)=>detail.movie,
         {
             cascade:true,
             nullable:false
@@ -44,14 +44,5 @@ export class Movie extends BaseTable{
     director:Director
 
     
-
-
-
-
-
-
-
-
-
 }
 
