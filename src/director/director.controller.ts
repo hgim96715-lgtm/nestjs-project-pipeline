@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, ParseIntPipe } from '@nestjs/common';
 import { DirectorService } from './director.service';
 import { CreateDirectorDto } from './dto/create-director.dto';
 import { UpdateDirectorDto } from './dto/update-director.dto';
@@ -18,17 +18,17 @@ export class DirectorController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.directorService.findOne(+id);
+  findOne(@Param('id',ParseIntPipe) id: number) {
+    return this.directorService.findOne(id);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateDirectorDto: UpdateDirectorDto) {
-    return this.directorService.update(+id, updateDirectorDto);
+  update(@Param('id',ParseIntPipe) id: number, @Body() updateDirectorDto: UpdateDirectorDto) {
+    return this.directorService.update(id, updateDirectorDto);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.directorService.remove(+id);
+  remove(@Param('id',ParseIntPipe) id: number) {
+    return this.directorService.remove(id);
   }
 }
