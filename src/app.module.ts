@@ -7,6 +7,8 @@ import { DirectorModule } from './director/director.module';
 
 import * as Joi from 'joi';
 import { envVariableKeys } from './common/const/env.const';
+import { AuthModule } from './auth/auth.module';
+import { UserModule } from './user/user.module';
 
 @Module({
   imports: [MovieModule,
@@ -20,6 +22,7 @@ import { envVariableKeys } from './common/const/env.const';
         DB_USER:Joi.string().required(),
         DB_PASSWORD:Joi.string().required(),
         DB_DATABASE:Joi.string().required(),
+        HASH_ROUNDS:Joi.number().required()
       })
     }),
     TypeOrmModule.forRootAsync({
@@ -37,7 +40,9 @@ import { envVariableKeys } from './common/const/env.const';
       inject:[ConfigService],
     }),
     GenreModule,
-    DirectorModule
+    DirectorModule,
+    AuthModule,
+    UserModule
   ],
   controllers: [],
   providers: [],

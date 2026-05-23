@@ -5,6 +5,7 @@ const dbPort = 'DB_PORT';
 const dbUsername = 'DB_USER';
 const dbPassword = 'DB_PASSWORD';
 const dbDatabase = 'DB_DATABASE';
+const hashRounds= 'HASH_ROUNDS';
 
 
 
@@ -16,4 +17,5 @@ export const envVariableKeys = {
     dbUsername,
     dbPassword,
     dbDatabase,
+    hashRounds
 }
