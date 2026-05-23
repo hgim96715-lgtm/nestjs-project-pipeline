@@ -17,6 +17,7 @@ export class Movie extends BaseTable{
     @OneToOne(
         ()=>MovieDetail,
         (detail)=>detail.movie,
+        // (MovieDetail)=>MovieDetail.id
         {
             cascade:true,
             nullable:false

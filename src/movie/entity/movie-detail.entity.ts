@@ -12,6 +12,7 @@ export class MovieDetail {
     @OneToOne(
         ()=>Movie,
         (movie)=>movie.detail
+        // (movie)=>movie.id
     )
     movie:Movie;
 
