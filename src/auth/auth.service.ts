@@ -1,15 +1,17 @@
-import { BadRequestException, ConflictException, Injectable } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { User } from 'src/user/entity/user.entity';
+import { Role, User } from 'src/user/entity/user.entity';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt'
 import { ConfigService } from '@nestjs/config';
 import { envVariableKeys } from 'src/common/const/env.const';
+import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 export class AuthService {
     constructor(@InjectRepository(User) private readonly userRepository:Repository<User>,
-private readonly configService:ConfigService){}
+private readonly configService:ConfigService,
+private readonly jwtService:JwtService){}
 
     parseBasicToken(rawToken:string){
         // Basic dGVzdGRkQGNvZGZhY3RvcnkuYWk6YXNkZnNkZmRmZHNm
@@ -50,6 +52,47 @@ private readonly configService:ConfigService){}
 
         return this.userRepository.findOne({where:{email}})
 
+    }
+
+    async authenticate(email:string,password:string){
+        const user=await this.userRepository.findOne({where:{email}})
+
+        if(!user){
+            throw new UnauthorizedException('잘못된 로그인 정보입니다.')
+        }
+
+        const isMatch=await bcrypt.compare(password,user.password);
+
+        if(!isMatch){
+            throw new UnauthorizedException('잘못된 로그인 정보입니다.')
+        }
+        return user
+    }
+
+    async issueToken(user:{id:number,role:Role},isRfreshToken:boolean){
+        const refreshTokenSecret=this.configService.getOrThrow<string>(envVariableKeys.refreshTokenSecret)
+        const accessTokenSecret=this.configService.getOrThrow<string>(envVariableKeys.accessTokenSecret)
+
+        return this.jwtService.signAsync({
+            sub:user.id,
+            role:user.role,
+            type:isRfreshToken? 'refresh':'access'
+        },{
+            secret:isRfreshToken? refreshTokenSecret:accessTokenSecret,
+            expiresIn:isRfreshToken? '24h':300
+        })
+
+    }
+
+    async login(rawToken:string){
+        const {email,password}=this.parseBasicToken(rawToken)
+
+        const user= await this.authenticate(email,password)
+
+        return {
+            refreshToken: await this.issueToken(user,true),
+            accessToken: await this.issueToken(user,false)
+        }
     }
 
 
