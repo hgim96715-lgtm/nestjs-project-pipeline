@@ -9,6 +9,8 @@ import * as Joi from 'joi';
 import { envVariableKeys } from './common/const/env.const';
 import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
+import { APP_GUARD } from '@nestjs/core';
+import { AuthGuard } from './auth/guard/auth.guard';
 
 @Module({
   imports: [MovieModule,
@@ -47,6 +49,9 @@ import { UserModule } from './user/user.module';
     UserModule
   ],
   controllers: [],
-  providers: [],
+  providers: [{
+    provide: APP_GUARD,
+    useClass:AuthGuard
+  }],
 })
 export class AppModule {}
