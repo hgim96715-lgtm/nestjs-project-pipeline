@@ -1,7 +1,8 @@
-import { Controller, Post,Headers, ClassSerializerInterceptor, UseInterceptors ,Request, UseGuards, Query} from '@nestjs/common';
+import { Controller, Post,Headers, ClassSerializerInterceptor, UseInterceptors ,Request, UseGuards, Query, Get} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { Public } from './decorator/public.decorator';
 import { LocalAuthGuard } from './strategy/local.strategy';
+import { JwtAuthGuard } from './strategy/jwt.strategy';
 
 @Controller('auth')
 @UseInterceptors(ClassSerializerInterceptor)
@@ -27,5 +28,11 @@ export class AuthController {
   async loginUserPassport(@Request() req){
     return req.user;
   }
-  
+
+  @Public()
+  @UseGuards(JwtAuthGuard)
+  @Get('private')
+  async private(@Request() req){
+    return req.user;
+  } 
 }
