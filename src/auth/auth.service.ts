@@ -14,7 +14,7 @@ private readonly configService:ConfigService,
 private readonly jwtService:JwtService){}
 
     parseBasicToken(rawToken:string){
-        // Basic dGVzdGRkQGNvZGZhY3RvcnkuYWk6YXNkZnNkZmRmZHNm
+        // Basic {token}
         // console.log(rawToken)
         const basicSplit=rawToken.split(' ');
         
@@ -22,7 +22,11 @@ private readonly jwtService:JwtService){}
             throw new BadRequestException('토큰 포맷이 잘못되었습니다.확인해주세요!')
         }
 
-        const [_,token]=basicSplit;
+        const [basic,token]=basicSplit;
+
+        if(basic.toLowerCase() !== 'basic'){
+            throw new BadRequestException('토큰 포맷이 잘못되었습니다.')
+        }
 
         const decoded=Buffer.from(token,'base64').toString('utf-8');
 
@@ -35,6 +39,42 @@ private readonly jwtService:JwtService){}
 
         const [email,password]=tokenSplit
         return {email,password}
+    }
+    
+    async parseBearerToken(rawToken:string,isRefreshToken:boolean){
+        // Bearer {token}
+        console.log(rawToken)
+        const bearerSplit= rawToken.split(' ');
+
+        if(bearerSplit.length !==2){
+            throw new BadRequestException('토큰포맷이 잘못되었습니다.확인해주세요')
+        }
+
+        const [bearer,token]=bearerSplit;
+
+        if(bearer.toLowerCase() !== 'bearer'){
+            throw new BadRequestException('토큰포맷이 잘못되었습니다.확인해주세요')
+        }
+
+        try{
+            const payload = await this.jwtService.verifyAsync(token,{
+                secret: this.configService.getOrThrow<string>(isRefreshToken? envVariableKeys.refreshTokenSecret : envVariableKeys.accessTokenSecret)
+            })
+            console.log(payload)
+            if(isRefreshToken){
+                if(payload.type !=='refresh'){
+                    throw new BadRequestException('refresh 토큰이 아닙니다.')
+                }
+            }else{
+                if(payload.type !== 'access'){
+                    throw new BadRequestException('access 토큰이 아닙니다.')
+                }
+            }
+            return payload;
+        }catch(e){
+            throw new UnauthorizedException('유효하지 않는 토큰입니다.')
+        }
+
     }
 
     async register(rawToken:string){
