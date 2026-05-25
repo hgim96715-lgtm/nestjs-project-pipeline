@@ -3,33 +3,41 @@ import { MovieService } from './movie.service';
 import { CreateMovieDto } from './dto/create-movie.dto';
 import { UpdateMovieDto } from './dto/update-movie.dto';
 import { MovieTitleValidationPipe } from './pipe/movie-title-validation.pipe';
+import { Public } from 'src/auth/decorator/public.decorator';
+import { RBAC } from 'src/auth/decorator/rbac.decorator';
+import { Role } from 'src/user/entity/user.entity';
 
 @Controller('movie')
 export class MovieController {
   constructor(private readonly movieService: MovieService) {}
 
+  @Public()
+  @Get()
+  findAll(@Query('title',MovieTitleValidationPipe)title?:string) {
+    return this.movieService.findAll(title);
+  }
+
+  @Public()
+  @Get(':id')
+  findOne(@Param('id',ParseIntPipe) id: number) {
+    return this.movieService.findOne(id);
+  }
+
+  @RBAC(Role.admin)
   @Post()
   create(@Body() createMovieDto: CreateMovieDto) {
     // console.log('Controller DTO:', createMovieDto);
     return this.movieService.create(createMovieDto)
   }
 
-  @Get()
-  findAll(@Query('title',MovieTitleValidationPipe)title?:string) {
-    return this.movieService.findAll(title);
-  }
 
-
-  @Get(':id')
-  findOne(@Param('id',ParseIntPipe) id: number) {
-    return this.movieService.findOne(id);
-  }
-
+  @RBAC(Role.paidUser)
   @Patch(':id')
   update(@Param('id',ParseIntPipe) id: number, @Body() updateMovieDto: UpdateMovieDto) {
     return this.movieService.update(id, updateMovieDto);
   }
 
+  @RBAC(Role.admin)
   @Delete(':id')
   remove(@Param('id',ParseIntPipe) id: number) {
     return this.movieService.remove(id);

@@ -88,7 +88,8 @@ private readonly jwtService:JwtService){}
 
         const hash= await bcrypt.hash(password,this.configService.getOrThrow<number>(envVariableKeys.hashRounds));
 
-        await this.userRepository.save({email,password:hash})
+        // await this.userRepository.save({email,password:hash}) default user
+        await this.userRepository.save({email,password:hash,role:Role.admin})
 
         return this.userRepository.findOne({where:{email}})
 

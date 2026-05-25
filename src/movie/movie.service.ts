@@ -168,7 +168,19 @@ private dataSource:DataSource){}
     }
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} movie`;
+  async remove(id: number) {
+    const movie=await this.movieRepository.findOne({where:{id}});
+    
+    if(!movie){
+      throw new NotFoundException(`${id}의 영화는 존재하지 않습니다.`)
+    }
+    await this.movieRepository.createQueryBuilder()
+    .delete()
+    .where('id=:id',{id})
+    .execute()
+
+    await this.movieDetailRepository.delete(movie.detail.id)
+
+    return `${id}의 영화가 삭제되었습니다.`
   }
 }

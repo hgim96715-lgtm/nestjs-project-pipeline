@@ -22,7 +22,7 @@ export class AuthController {
     return this.authService.login(token)
   }
 
-  @Public()
+  // @Public()
   @UseGuards(LocalAuthGuard)
   @Post('login/passport')
   async loginUserPassport(@Request() req){
