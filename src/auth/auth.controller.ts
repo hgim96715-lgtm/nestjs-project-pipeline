@@ -1,6 +1,7 @@
-import { Controller, Post,Headers, ClassSerializerInterceptor, UseInterceptors } from '@nestjs/common';
+import { Controller, Post,Headers, ClassSerializerInterceptor, UseInterceptors ,Request, UseGuards, Query} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { Public } from './decorator/public.decorator';
+import { LocalAuthGuard } from './strategy/local.strategy';
 
 @Controller('auth')
 @UseInterceptors(ClassSerializerInterceptor)
@@ -18,6 +19,13 @@ export class AuthController {
   @Post('login')
   loginUser(@Headers('authorization') token:string){
     return this.authService.login(token)
+  }
+
+  @Public()
+  @UseGuards(LocalAuthGuard)
+  @Post('login/passport')
+  async loginUserPassport(@Request() req){
+    return req.user;
   }
   
 }
