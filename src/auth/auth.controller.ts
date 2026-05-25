@@ -3,7 +3,6 @@ import { AuthService } from './auth.service';
 import { Public } from './decorator/public.decorator';
 import { LocalAuthGuard } from './strategy/local.strategy';
 import { JwtAuthGuard } from './strategy/jwt.strategy';
-import { access } from 'fs';
 
 @Controller('auth')
 @UseInterceptors(ClassSerializerInterceptor)
@@ -33,7 +32,6 @@ export class AuthController {
     }
   }
 
-  @Public()
   @UseGuards(JwtAuthGuard)
   @Get('private')
   async private(@Request() req){

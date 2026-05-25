@@ -10,7 +10,7 @@ export class MovieController {
 
   @Post()
   create(@Body() createMovieDto: CreateMovieDto) {
-    console.log('Controller DTO:', createMovieDto);
+    // console.log('Controller DTO:', createMovieDto);
     return this.movieService.create(createMovieDto)
   }
 

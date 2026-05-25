@@ -43,7 +43,7 @@ private readonly jwtService:JwtService){}
     
     async parseBearerToken(rawToken:string,isRefreshToken:boolean){
         // Bearer {token}
-        console.log(rawToken)
+        // console.log(rawToken)
         const bearerSplit= rawToken.split(' ');
 
         if(bearerSplit.length !==2){
@@ -60,7 +60,7 @@ private readonly jwtService:JwtService){}
             const payload = await this.jwtService.verifyAsync(token,{
                 secret: this.configService.getOrThrow<string>(isRefreshToken? envVariableKeys.refreshTokenSecret : envVariableKeys.accessTokenSecret)
             })
-            console.log(payload)
+            // console.log(payload)
             if(isRefreshToken){
                 if(payload.type !=='refresh'){
                     throw new BadRequestException('refresh 토큰이 아닙니다.')
