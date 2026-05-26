@@ -9,13 +9,15 @@ import * as Joi from 'joi';
 import { envVariableKeys } from './common/const/env.const';
 import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
-import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { AuthGuard } from './auth/guard/auth.guard';
 import { BearerTokenMiddleware } from './auth/middleware/bearer-token.middleware';
 import { RBACGuard } from './auth/guard/rbac.guard';
 import { CommonModule } from './common/common.module';
 import { ResponseTimeInterceptor } from './common/interceptor/ex.response-time.interceptor';
 import { CacheInterceptor } from './common/interceptor/ex.cache.interceptor';
+import { ForbiddenExceptionFilter } from './common/filter/forbidden.filter';
+import { QueryFailedException } from './common/filter/query-failed.filter';
 
 @Module({
   imports: [MovieModule,
@@ -64,6 +66,13 @@ import { CacheInterceptor } from './common/interceptor/ex.cache.interceptor';
   },
 {provide:APP_INTERCEPTOR,
   useClass:ResponseTimeInterceptor
+},
+{
+  provide:APP_FILTER,
+  useClass:ForbiddenExceptionFilter
+},{
+  provide:APP_FILTER,
+  useClass:QueryFailedException
 }],
 })
 
