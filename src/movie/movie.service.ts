@@ -34,9 +34,15 @@ private readonly commonService:CommonService){}
     }
 
     // this.commonService.applyPagePaginationParamsToQb(qb,dto)
-    this.commonService.applyCursorPaginationParamsToQb(qb,dto)
+    const{nextCursor}=await this.commonService.applyCursorPaginationParamsToQb(qb,dto)
 
-    return qb.getManyAndCount();
+    const [data,count]=await qb.getManyAndCount();
+
+    return{
+      data,
+      count,
+      nextCursor,
+    }
   }
 
   async findOne(id: number) {

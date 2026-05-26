@@ -13,6 +13,9 @@ export class Movie extends BaseTable{
     @Column({unique:true})
     title:string;
 
+    @Column({default:0})
+    likeCount:number;
+
     // 영화는 하나의 상세정보를 가진다.
     @OneToOne(
         ()=>MovieDetail,
