@@ -13,6 +13,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { AuthGuard } from './auth/guard/auth.guard';
 import { BearerTokenMiddleware } from './auth/middleware/bearer-token.middleware';
 import { RBACGuard } from './auth/guard/rbac.guard';
+import { CommonModule } from './common/common.module';
 
 @Module({
   imports: [MovieModule,
@@ -48,7 +49,8 @@ import { RBACGuard } from './auth/guard/rbac.guard';
     GenreModule,
     DirectorModule,
     AuthModule,
-    UserModule
+    UserModule,
+    CommonModule
   ],
   controllers: [],
   providers: [{
