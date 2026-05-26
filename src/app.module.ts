@@ -51,10 +51,10 @@ import { QueryFailedException } from './common/filter/query-failed.filter';
       inject:[ConfigService],
     }),
     GenreModule,
-    DirectorModule,
+    DirectorModule, 
     AuthModule,
     UserModule,
-    CommonModule
+    CommonModule,
   ],
   controllers: [],
   providers: [{
