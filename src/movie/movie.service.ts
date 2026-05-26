@@ -7,6 +7,8 @@ import { Repository,DataSource, In, Not, Like } from 'typeorm';
 import { MovieDetail } from './entity/movie-detail.entity';
 import { Genre } from 'src/genre/entity/genre.entity';
 import { Director } from 'src/director/entity/director.entity';
+import { GetMoviesDto } from './dto/get-movies.dto';
+import { CommonService } from 'src/common/common.service';
 
 @Injectable()
 export class MovieService {
@@ -14,17 +16,26 @@ export class MovieService {
 @InjectRepository(MovieDetail) private readonly movieDetailRepository:Repository<MovieDetail>,
 @InjectRepository(Genre) private readonly genreRepository:Repository<Genre>,
 @InjectRepository(Director) private readonly directorRepository:Repository<Director>,
-private dataSource:DataSource){}
+private readonly dataSource:DataSource,
+private readonly commonService:CommonService){}
 
-  async findAll(title?:string) {
-    if (!title){
-      return[await this.movieRepository.find(),await this.movieRepository.count()];
+  async findAll(dto:GetMoviesDto) {
+    const { title,page,take } = dto
+
+    const qb = this.movieRepository
+      .createQueryBuilder('movie')
+      .leftJoinAndSelect('movie.director', 'director')
+      .leftJoinAndSelect('movie.genres', 'genres');
+
+    if (title) {
+      qb.where('movie.title LIKE :title', { title: `%${title}%` });
     }
-    return this.movieRepository.findAndCount({
-      where:{
-        title:Like(`%${title}%`)
-      }
-    })
+
+    if(page&&take){
+      this.commonService.applyPagePaginationParamsToQb(qb,dto)
+    }
+
+    return qb.getManyAndCount();
   }
 
   async findOne(id: number) {
