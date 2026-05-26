@@ -20,7 +20,9 @@ private readonly dataSource:DataSource,
 private readonly commonService:CommonService){}
 
   async findAll(dto:GetMoviesDto) {
-    const { title,page,take } = dto
+    // const { title,page,take } = dto
+
+    const {title}=dto;
 
     const qb = this.movieRepository
       .createQueryBuilder('movie')
@@ -31,9 +33,8 @@ private readonly commonService:CommonService){}
       qb.where('movie.title LIKE :title', { title: `%${title}%` });
     }
 
-    if(page&&take){
-      this.commonService.applyPagePaginationParamsToQb(qb,dto)
-    }
+    // this.commonService.applyPagePaginationParamsToQb(qb,dto)
+    this.commonService.applyCursorPaginationParamsToQb(qb,dto)
 
     return qb.getManyAndCount();
   }
