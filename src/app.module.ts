@@ -9,11 +9,13 @@ import * as Joi from 'joi';
 import { envVariableKeys } from './common/const/env.const';
 import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { AuthGuard } from './auth/guard/auth.guard';
 import { BearerTokenMiddleware } from './auth/middleware/bearer-token.middleware';
 import { RBACGuard } from './auth/guard/rbac.guard';
 import { CommonModule } from './common/common.module';
+import { ResponseTimeInterceptor } from './common/interceptor/ex.response-time.interceptor';
+import { CacheInterceptor } from './common/interceptor/ex.cache.interceptor';
 
 @Module({
   imports: [MovieModule,
@@ -59,7 +61,10 @@ import { CommonModule } from './common/common.module';
   },{
     provide:APP_GUARD,
     useClass:RBACGuard
-  }],
+  },
+{provide:APP_INTERCEPTOR,
+  useClass:ResponseTimeInterceptor
+}],
 })
 
 export class AppModule implements NestModule{

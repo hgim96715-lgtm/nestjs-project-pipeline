@@ -9,6 +9,7 @@ import { Genre } from 'src/genre/entity/genre.entity';
 import { Director } from 'src/director/entity/director.entity';
 import { GetMoviesDto } from './dto/get-movies.dto';
 import { CommonService } from 'src/common/common.service';
+import { QueryRunner } from 'typeorm/browser';
 
 @Injectable()
 export class MovieService {
@@ -56,14 +57,8 @@ private readonly commonService:CommonService){}
    return movie;
   }
   
-  async create(createMovieDto:CreateMovieDto){
-    const qr=this.dataSource.createQueryRunner();
+  async create(createMovieDto:CreateMovieDto,qr:QueryRunner){
 
-    await qr.connect();
-    await qr.startTransaction();
-
-    // 합치고 싶지만 합치면 더 복잡해질것 같다.
-    try{
       const director=await qr.manager.findOne(Director,{where:{id:createMovieDto.directorId}});
       if (!director){
         throw new NotFoundException('존재하지 않는 감독의 ID입니다.')
@@ -96,16 +91,10 @@ private readonly commonService:CommonService){}
         .of(movieId)
         .add(genres.map((genre)=>genre.id))
 
-      await qr.commitTransaction();
-      return await this.movieRepository.findOne({
+      return await qr.manager.findOne(Movie,{
         where:{id:movieId},relations:{detail:true,director:true,genres:true}
       })
-    }catch(e){
-      await qr.rollbackTransaction();
-      throw e;
-    }finally{
-      await qr.release();
-    }
+    
   }
 
   async update(id: number, updateMovieDto: UpdateMovieDto) {
