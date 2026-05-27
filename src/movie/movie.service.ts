@@ -1,5 +1,5 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { unlink } from 'fs/promises';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { mkdir, rename, stat, unlink } from 'fs/promises';
 import { CreateMovieDto } from './dto/create-movie.dto';
 import { UpdateMovieDto } from './dto/update-movie.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -12,7 +12,7 @@ import { Director } from 'src/director/entity/director.entity';
 import { GetMoviesDto } from './dto/get-movies.dto';
 import { CommonService } from 'src/common/common.service';
 import { QueryRunner } from 'typeorm/browser';
-import { relative } from 'path';
+import { basename, isAbsolute, join, relative } from 'path';
 
 @Injectable()
 export class MovieService {
@@ -33,6 +33,15 @@ export class MovieService {
         }
 
         await Promise.all(movies.map((file) => unlink(file.path).catch(() => undefined)));
+    }
+
+    //파일 경로 문자열 정리를 위해
+    private normalizeTempRefs(files?: string[]) {
+        if (!files?.length) return [];
+        return files
+            .filter((v) => typeof v === 'string')
+            .map((v) => v.trim())
+            .filter((v) => v.length > 0);
     }
 
     async findAll(dto: GetMoviesDto) {
@@ -75,7 +84,9 @@ export class MovieService {
         return movie;
     }
 
-    async create(createMovieDto: CreateMovieDto, movies: Express.Multer.File[], qr: QueryRunner) {
+    async create(createMovieDto: CreateMovieDto, files: string[], qr: QueryRunner) {
+        const refs = this.normalizeTempRefs(files);
+
         try {
             const titleExists = await qr.manager.exists(Movie, {
                 where: { title: createMovieDto.title },
@@ -120,20 +131,58 @@ export class MovieService {
                 .of(movieId)
                 .add(genres.map((genre) => genre.id));
 
-            if (movies?.length) {
-                const movieFiles = movies.map((file) => {
-                    const publicPath = relative(process.cwd(), file.path);
-                    // console.log(process.cwd(), file.path);
-                    return qr.manager.create(MovieFile, {
-                        path: publicPath,
-                        originalName: file.originalname,
-                        mimetype: file.mimetype,
-                        size: file.size,
-                        movie: { id: movieId },
-                    });
-                });
+            if (refs.length) {
+                const resolveSrcAbs = (ref: string) =>
+                    isAbsolute(ref)
+                        ? ref
+                        : ref.includes('/')
+                          ? join(process.cwd(), ref)
+                          : join(process.cwd(), 'public', 'temp', ref);
 
-                await qr.manager.save(MovieFile, movieFiles);
+                const scrAbsPaths = refs.map(resolveSrcAbs);
+
+                const srcStats = await Promise.all(scrAbsPaths.map((p) => stat(p).catch(() => null)));
+
+                const whoMissingRefs = refs.filter((_, i) => !srcStats[i]);
+
+                if (whoMissingRefs.length) {
+                    throw new BadRequestException(`존재하지 않는 파일이 있습니다. -> ${whoMissingRefs.join(', ')}`);
+                }
+
+                const movieDir = join(process.cwd(), 'public', 'movie', String(movieId));
+
+                await mkdir(movieDir, { recursive: true });
+
+                const renamed: Array<{ srcAbs: string; destAbs: string }> = [];
+
+                try {
+                    const movieFiles = await Promise.all(
+                        refs.map(async (_, idx) => {
+                            const srcAbs = scrAbsPaths[idx];
+                            const st = srcStats[idx]!;
+                            const filename = basename(srcAbs);
+                            const destAbs = join(movieDir, filename);
+
+                            await rename(srcAbs, destAbs);
+                            renamed.push({ srcAbs, destAbs });
+
+                            const publicPath = relative(process.cwd(), destAbs);
+
+                            return qr.manager.create(MovieFile, {
+                                path: publicPath,
+                                originalName: filename,
+                                mimetype: 'video/mp4',
+                                size: st!.size,
+                                movie: { id: movieId },
+                            });
+                        }),
+                    );
+                    await qr.manager.save(MovieFile, movieFiles);
+                } catch (err) {
+                    // filesystem 부분 실패 시 되돌리기 (DB 트랜잭션 롤백과 별개라서 방어)
+                    await Promise.all(renamed.map((r) => rename(r.destAbs, r.srcAbs).catch(() => undefined)));
+                    throw err;
+                }
             }
 
             return await qr.manager.findOne(Movie, {
@@ -141,7 +190,6 @@ export class MovieService {
                 relations: { detail: true, director: true, genres: true, files: true },
             });
         } catch (error) {
-            await this.cleanupUploadedFiles(movies);
             throw error;
         }
     }
