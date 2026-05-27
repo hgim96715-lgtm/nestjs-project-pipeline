@@ -41,7 +41,8 @@ export class MovieFilesPipe implements PipeTransform<Express.Multer.File[], Prom
                 if (split.length > 1) {
                     extension = split[split.length - 1];
                 }
-                const filename = `${v4()}_${Date.now()}.${extension}`;
+                //split[0]_Date.mp4
+                const filename = `${split[0]}_${Date.now()}.${extension}`;
                 const newPath = join(value.destination, filename);
 
                 await rename(value.path, newPath);
