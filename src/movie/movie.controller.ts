@@ -26,6 +26,7 @@ import { CacheInterceptor } from 'src/common/interceptor/ex.cache.interceptor';
 import { TransactionInterceptor } from 'src/common/interceptor/transaction.interceptor';
 import { FileFieldsInterceptor, FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { MovieFilePipe } from './pipe/movie-file.pipe';
+import { MovieFilesPipe } from './pipe/movie-files.pipe';
 
 @Controller('movie')
 export class MovieController {
@@ -47,9 +48,9 @@ export class MovieController {
     @Post()
     @UseInterceptors(TransactionInterceptor)
     @UseInterceptors(
-        FileInterceptor('movie', {
+        FilesInterceptor('movies', 3, {
             limits: {
-                fileSize: 150 * 1024 * 1024,
+                fileSize: 800 * 1000000,
             },
             fileFilter(req, file, callback) {
                 if (file.mimetype !== 'video/mp4') {
@@ -64,16 +65,17 @@ export class MovieController {
     create(
         @Body() createMovieDto: CreateMovieDto,
         @Request() req,
-        @UploadedFile(
-            new MovieFilePipe({
-                maxSize: 30,
+        @UploadedFiles(
+            new MovieFilesPipe({
+                maxSize: 300,
                 mimetype: 'video/mp4',
+                maxCount: 3,
             }),
         )
-        movie: Express.Multer.File,
+        movies: Express.Multer.File[],
     ) {
         console.log('=======파일==========');
-        console.log(movie);
+        console.log(movies);
         // console.log('Controller DTO:', createMovieDto);
         return this.movieService.create(createMovieDto, req.queryRunner);
     }
