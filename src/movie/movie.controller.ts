@@ -77,7 +77,7 @@ export class MovieController {
         console.log('=======파일==========');
         console.log(movies);
         // console.log('Controller DTO:', createMovieDto);
-        return this.movieService.create(createMovieDto, req.queryRunner);
+        return this.movieService.create(createMovieDto, movies, req.queryRunner);
     }
 
     @RBAC(Role.paidUser)

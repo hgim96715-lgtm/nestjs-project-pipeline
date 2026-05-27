@@ -1,23 +1,22 @@
-import { Type } from "class-transformer";
-import { ArrayNotEmpty, IsArray, IsNotEmpty, IsNumber, IsString } from "class-validator";
+import { Type } from 'class-transformer';
+import { ArrayNotEmpty, IsArray, IsNotEmpty, IsNumber, IsString } from 'class-validator';
 
 export class CreateMovieDto {
     @IsNotEmpty()
     @IsString()
-    title:string;
+    title: string;
 
     @IsNotEmpty()
     @IsString()
-    detail:string;
+    detail: string;
 
     @IsNotEmpty()
     @IsNumber()
-    directorId:number;
+    directorId: number;
 
     @IsArray()
     @ArrayNotEmpty()
-    @IsNumber({},{each:true})
-    @Type(()=>Number)
-    genreIds:number[];
+    @IsNumber({}, { each: true })
+    @Type(() => Number)
+    genreIds: number[];
 }
-

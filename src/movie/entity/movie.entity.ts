@@ -1,52 +1,55 @@
 import { BaseTable } from 'src/common/entity/base-table.entity';
-import { Entity, PrimaryGeneratedColumn, Column, JoinColumn, OneToOne, ManyToMany, JoinTable, ManyToOne } from 'typeorm';
+import {
+    Entity,
+    PrimaryGeneratedColumn,
+    Column,
+    JoinColumn,
+    OneToOne,
+    ManyToMany,
+    JoinTable,
+    ManyToOne,
+    OneToMany,
+} from 'typeorm';
 import { MovieDetail } from './movie-detail.entity';
 import { Genre } from 'src/genre/entity/genre.entity';
 import { Director } from 'src/director/entity/director.entity';
-
+import { MovieFile } from './movie-file.entity';
 
 @Entity()
-export class Movie extends BaseTable{
+export class Movie extends BaseTable {
     @PrimaryGeneratedColumn()
     id: number;
 
-    @Column({unique:true})
-    title:string;
+    @Column({ unique: true })
+    title: string;
 
-    @Column({default:0})
-    likeCount:number;
+    @Column({ default: 0 })
+    likeCount: number;
+
+    @OneToMany(() => MovieFile, (file) => file.movie, { cascade: true })
+    files: MovieFile[];
 
     // 영화는 하나의 상세정보를 가진다.
     @OneToOne(
-        ()=>MovieDetail,
-        (detail)=>detail.movie,
+        () => MovieDetail,
+        (detail) => detail.movie,
         // (MovieDetail)=>MovieDetail.id
         {
-            cascade:true,
-            nullable:false
-        }
+            cascade: true,
+            nullable: false,
+        },
     )
     @JoinColumn()
-    detail:MovieDetail;
+    detail: MovieDetail;
 
     // 영화는 여러 장르를 가질 수 있고, 장르는 여러 영화에 속할수 있기때문
-    @ManyToMany(
-        ()=>Genre,
-        (genre)=>genre.movies
-    )
+    @ManyToMany(() => Genre, (genre) => genre.movies)
     @JoinTable()
-    genres:Genre[];
+    genres: Genre[];
 
-    @ManyToOne(
-        ()=>Director,
-        (director)=>director.movies,
-        {
-            cascade:true,
-            nullable:false
-        }
-    )
-    director:Director
-
-    
+    @ManyToOne(() => Director, (director) => director.movies, {
+        cascade: true,
+        nullable: false,
+    })
+    director: Director;
 }
-
