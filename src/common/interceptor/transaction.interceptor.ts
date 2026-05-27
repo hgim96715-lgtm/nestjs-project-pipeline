@@ -1,5 +1,6 @@
 import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from "@nestjs/common";
-import { catchError, Observable, tap, throwError } from "rxjs";
+import { unlink } from "fs/promises";
+import { catchError, Observable, tap } from "rxjs";
 import { DataSource } from "typeorm";
 
 @Injectable()
@@ -22,6 +23,14 @@ export class TransactionInterceptor implements NestInterceptor{
             catchError(async (e)=>{
                 await qr.rollbackTransaction()
                 await qr.release()
+
+                const uploadedPaths = req.uploadedMoviePaths as string[] | undefined;
+                if (uploadedPaths?.length) {
+                    await Promise.all(
+                        uploadedPaths.map((path) => unlink(path).catch(() => undefined)),
+                    );
+                }
+
                 throw e;
             }),
             tap(async()=>{

@@ -74,9 +74,8 @@ export class MovieController {
         )
         movies: Express.Multer.File[],
     ) {
-        console.log('=======파일==========');
-        console.log(movies);
-        // console.log('Controller DTO:', createMovieDto);
+        req.uploadedMoviePaths = movies?.map((file) => file.path) ?? [];
+
         return this.movieService.create(createMovieDto, movies, req.queryRunner);
     }
 
