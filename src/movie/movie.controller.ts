@@ -47,21 +47,21 @@ export class MovieController {
     @RBAC(Role.admin)
     @Post()
     @UseInterceptors(TransactionInterceptor)
-    @UseInterceptors(
-        FilesInterceptor('movies', 3, {
-            limits: {
-                fileSize: 800 * 1000000,
-            },
-            fileFilter(req, file, callback) {
-                if (file.mimetype !== 'video/mp4') {
-                    return callback(new BadRequestException('MP4 타입만 업로드 가능합니다.'), false);
-                }
-                console.log(file);
-                console.log('mimetype:', file.mimetype);
-                return callback(null, true);
-            },
-        }),
-    )
+    // @UseInterceptors(
+    //     FilesInterceptor('movies', 3, {
+    //         limits: {
+    //             fileSize: 800 * 1000000,
+    //         },
+    //         fileFilter(req, file, callback) {
+    //             if (file.mimetype !== 'video/mp4') {
+    //                 return callback(new BadRequestException('MP4 타입만 업로드 가능합니다.'), false);
+    //             }
+    //             console.log(file);
+    //             console.log('mimetype:', file.mimetype);
+    //             return callback(null, true);
+    //         },
+    //     }),
+    // )
     create(
         @Body() createMovieDto: CreateMovieDto,
         @Request() req,

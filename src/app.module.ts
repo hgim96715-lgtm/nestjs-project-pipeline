@@ -18,75 +18,87 @@ import { ResponseTimeInterceptor } from './common/interceptor/ex.response-time.i
 import { CacheInterceptor } from './common/interceptor/ex.cache.interceptor';
 import { ForbiddenExceptionFilter } from './common/filter/forbidden.filter';
 import { QueryFailedException } from './common/filter/query-failed.filter';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
+import { CommonController } from './common/common.controller';
 
 @Module({
-  imports: [MovieModule,
-    ConfigModule.forRoot({
-      isGlobal:true,
-      validationSchema: Joi.object({
-        ENV:Joi.string().valid('dev','prod').required(),
-        DB_TYPE:Joi.string().valid('postgres').required(),
-        DB_HOST:Joi.string().required(),
-        DB_PORT:Joi.number().required(),
-        DB_USER:Joi.string().required(),
-        DB_PASSWORD:Joi.string().required(),
-        DB_DATABASE:Joi.string().required(),
-        HASH_ROUNDS:Joi.number().required(),
-        ACCESS_TOKEN_SECRET:Joi.string().required(),
-        REFRESH_TOKEN_SECRET:Joi.string().required()
-      })
-    }),
-    TypeOrmModule.forRootAsync({
-      useFactory:(configService:ConfigService)=>({
-       type:configService.get<string>(envVariableKeys.dbType) as "postgres",
-       host:configService.get<string>(envVariableKeys.dbHost),
-       port:configService.get<number>(envVariableKeys.dbPort),
-       username:configService.get<string>(envVariableKeys.dbUsername),
-       password:configService.get<string>(envVariableKeys.dbPassword),
-       database:configService.get<string>(envVariableKeys.dbDatabase),
-       //
-       autoLoadEntities:true,
-       synchronize:true,
-      }),
-      inject:[ConfigService],
-    }),
-    GenreModule,
-    DirectorModule, 
-    AuthModule,
-    UserModule,
-    CommonModule,
-  ],
-  controllers: [],
-  providers: [{
-    provide: APP_GUARD,
-    useClass:AuthGuard
-  },{
-    provide:APP_GUARD,
-    useClass:RBACGuard
-  },
-{provide:APP_INTERCEPTOR,
-  useClass:ResponseTimeInterceptor
-},
-{
-  provide:APP_FILTER,
-  useClass:ForbiddenExceptionFilter
-},{
-  provide:APP_FILTER,
-  useClass:QueryFailedException
-}],
+    imports: [
+        MovieModule,
+        ConfigModule.forRoot({
+            isGlobal: true,
+            validationSchema: Joi.object({
+                ENV: Joi.string().valid('dev', 'prod').required(),
+                DB_TYPE: Joi.string().valid('postgres').required(),
+                DB_HOST: Joi.string().required(),
+                DB_PORT: Joi.number().required(),
+                DB_USER: Joi.string().required(),
+                DB_PASSWORD: Joi.string().required(),
+                DB_DATABASE: Joi.string().required(),
+                HASH_ROUNDS: Joi.number().required(),
+                ACCESS_TOKEN_SECRET: Joi.string().required(),
+                REFRESH_TOKEN_SECRET: Joi.string().required(),
+            }),
+        }),
+        TypeOrmModule.forRootAsync({
+            useFactory: (configService: ConfigService) => ({
+                type: configService.get<string>(envVariableKeys.dbType) as 'postgres',
+                host: configService.get<string>(envVariableKeys.dbHost),
+                port: configService.get<number>(envVariableKeys.dbPort),
+                username: configService.get<string>(envVariableKeys.dbUsername),
+                password: configService.get<string>(envVariableKeys.dbPassword),
+                database: configService.get<string>(envVariableKeys.dbDatabase),
+                //
+                autoLoadEntities: true,
+                synchronize: true,
+            }),
+            inject: [ConfigService],
+        }),
+        GenreModule,
+        DirectorModule,
+        AuthModule,
+        UserModule,
+        CommonModule,
+        ServeStaticModule.forRoot({
+            rootPath: join(process.cwd(), 'public'),
+            serveRoot: '/public',
+        }),
+    ],
+    controllers: [CommonController],
+    providers: [
+        {
+            provide: APP_GUARD,
+            useClass: AuthGuard,
+        },
+        {
+            provide: APP_GUARD,
+            useClass: RBACGuard,
+        },
+        { provide: APP_INTERCEPTOR, useClass: ResponseTimeInterceptor },
+        {
+            provide: APP_FILTER,
+            useClass: ForbiddenExceptionFilter,
+        },
+        {
+            provide: APP_FILTER,
+            useClass: QueryFailedException,
+        },
+    ],
 })
-
-export class AppModule implements NestModule{
-  configure(consumer: MiddlewareConsumer) {
-      consumer.apply(BearerTokenMiddleware)
-      .exclude({
-        path:'auth/login',
-        method:RequestMethod.POST
-      },
-    {
-      path:'auth/register',
-      method: RequestMethod.POST
-    })
-    .forRoutes('*');
+export class AppModule implements NestModule {
+    configure(consumer: MiddlewareConsumer) {
+        consumer
+            .apply(BearerTokenMiddleware)
+            .exclude(
+                {
+                    path: 'auth/login',
+                    method: RequestMethod.POST,
+                },
+                {
+                    path: 'auth/register',
+                    method: RequestMethod.POST,
+                },
+            )
+            .forRoutes('*');
     }
-  }
+}
