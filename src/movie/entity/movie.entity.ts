@@ -14,6 +14,7 @@ import { MovieDetail } from './movie-detail.entity';
 import { Genre } from 'src/genre/entity/genre.entity';
 import { Director } from 'src/director/entity/director.entity';
 import { MovieFile } from './movie-file.entity';
+import { User } from 'src/user/entity/user.entity';
 
 @Entity()
 export class Movie extends BaseTable {
@@ -52,4 +53,7 @@ export class Movie extends BaseTable {
         nullable: false,
     })
     director: Director;
+
+    @ManyToOne(() => User, (user) => user.createdMovies)
+    creator: User;
 }

@@ -84,7 +84,7 @@ export class MovieService {
         return movie;
     }
 
-    async create(createMovieDto: CreateMovieDto, files: string[], qr: QueryRunner) {
+    async create(createMovieDto: CreateMovieDto, files: string[], qr: QueryRunner, userId: number) {
         const refs = this.normalizeTempRefs(files);
 
         try {
@@ -120,7 +120,13 @@ export class MovieService {
                 .createQueryBuilder()
                 .insert()
                 .into(Movie)
-                .values({ title: createMovieDto.title, detail: { id: movieDetailId }, director, genres })
+                .values({
+                    title: createMovieDto.title,
+                    detail: { id: movieDetailId },
+                    director,
+                    genres,
+                    creator: { id: userId },
+                })
                 .execute();
 
             const movieId = movie.identifiers[0].id;
