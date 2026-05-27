@@ -12,6 +12,7 @@ import { Director } from 'src/director/entity/director.entity';
 import { GetMoviesDto } from './dto/get-movies.dto';
 import { CommonService } from 'src/common/common.service';
 import { QueryRunner } from 'typeorm/browser';
+import { relative } from 'path';
 
 @Injectable()
 export class MovieService {
@@ -120,15 +121,17 @@ export class MovieService {
                 .add(genres.map((genre) => genre.id));
 
             if (movies?.length) {
-                const movieFiles = movies.map((file) =>
-                    qr.manager.create(MovieFile, {
-                        path: file.path,
+                const movieFiles = movies.map((file) => {
+                    const publicPath = relative(process.cwd(), file.path);
+                    // console.log(process.cwd(), file.path);
+                    return qr.manager.create(MovieFile, {
+                        path: publicPath,
                         originalName: file.originalname,
                         mimetype: file.mimetype,
                         size: file.size,
                         movie: { id: movieId },
-                    }),
-                );
+                    });
+                });
 
                 await qr.manager.save(MovieFile, movieFiles);
             }
