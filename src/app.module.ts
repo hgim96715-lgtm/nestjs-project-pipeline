@@ -22,6 +22,9 @@ import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { CommonController } from './common/common.controller';
 
+import { CacheModule } from '@nestjs/cache-manager';
+import { minutes, Throttle, ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+
 @Module({
     imports: [
         MovieModule,
@@ -63,9 +66,27 @@ import { CommonController } from './common/common.controller';
             rootPath: join(process.cwd(), 'public'),
             serveRoot: '/public',
         }),
+        CacheModule.register({
+            ttl: 0,
+            max: 10,
+            isGlobal: true,
+        }),
+        ThrottlerModule.forRoot({
+            throttlers: [
+                {
+                    ttl: minutes(1),
+                    limit: 20,
+                },
+            ],
+            errorMessage: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.',
+        }),
     ],
     controllers: [CommonController],
     providers: [
+        {
+            provide: APP_GUARD,
+            useClass: ThrottlerGuard,
+        },
         {
             provide: APP_GUARD,
             useClass: AuthGuard,

@@ -16,6 +16,7 @@ import { LocalAuthGuard } from './strategy/local.strategy';
 import { JwtAuthGuard } from './strategy/jwt.strategy';
 import { RBAC } from './decorator/rbac.decorator';
 import { Role } from 'src/user/entity/user.entity';
+import { minutes, Throttle } from '@nestjs/throttler';
 
 @Controller('auth')
 @UseInterceptors(ClassSerializerInterceptor)
@@ -29,6 +30,7 @@ export class AuthController {
     }
 
     @Public()
+    @Throttle({ default: { ttl: minutes(1), limit: 5 } })
     @Post('login')
     loginUser(@Headers('authorization') token: string) {
         return this.authService.login(token);
