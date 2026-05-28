@@ -28,8 +28,8 @@ export class MovieController {
 
     @Public()
     @Get()
-    findAll(@Query() dto: GetMoviesDto) {
-        return this.movieService.findAll(dto);
+    findAll(@Query() dto: GetMoviesDto, @UserId() userId?: number) {
+        return this.movieService.findAll(dto, userId);
     }
 
     @Public()
@@ -43,6 +43,17 @@ export class MovieController {
     @UseInterceptors(TransactionInterceptor)
     create(@Body() createMovieDto: CreateMovieDto, @QueryRunner() queryRunner, @UserId() userId: number) {
         return this.movieService.create(createMovieDto, createMovieDto.files ?? [], queryRunner, userId);
+    }
+
+    // 좋아요 & 좋아요 취소
+    @Post(':id/like')
+    createMovieLike(@Param('id', ParseIntPipe) movieId: number, @UserId() userId: number) {
+        return this.movieService.toggleMovieLie(movieId, userId, true);
+    }
+
+    @Post(':id/unlike')
+    createMovieUnlike(@Param('id', ParseIntPipe) movieId: number, @UserId() userId: number) {
+        return this.movieService.toggleMovieLie(movieId, userId, false);
     }
 
     @RBAC(Role.paidUser)
