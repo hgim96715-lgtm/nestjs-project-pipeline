@@ -6,6 +6,6 @@ export const UserId = createParamDecorator((data: unknown, ctx: ExecutionContext
     if (!request || !request.user || !request.user.sub) {
         throw new UnauthorizedException('사용자 정보를 찾을 수 없습니다.');
     }
-    console.log('user.sub', request.user.sub);
+    // console.log('user.sub', request.user.sub);
     return request.user.sub;
 });

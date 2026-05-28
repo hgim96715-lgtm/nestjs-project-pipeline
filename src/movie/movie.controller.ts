@@ -20,6 +20,7 @@ import { Role } from 'src/user/entity/user.entity';
 import { GetMoviesDto } from './dto/get-movies.dto';
 import { TransactionInterceptor } from 'src/common/interceptor/transaction.interceptor';
 import { UserId } from 'src/user/decorator/user-id.decorator';
+import { QueryRunner } from 'src/common/decorator/query-runner.decorator';
 
 @Controller('movie')
 export class MovieController {
@@ -40,8 +41,8 @@ export class MovieController {
     @RBAC(Role.admin)
     @Post()
     @UseInterceptors(TransactionInterceptor)
-    create(@Body() createMovieDto: CreateMovieDto, @Request() req, @UserId() userId: number) {
-        return this.movieService.create(createMovieDto, createMovieDto.files ?? [], req.queryRunner, userId);
+    create(@Body() createMovieDto: CreateMovieDto, @QueryRunner() queryRunner, @UserId() userId: number) {
+        return this.movieService.create(createMovieDto, createMovieDto.files ?? [], queryRunner, userId);
     }
 
     @RBAC(Role.paidUser)
