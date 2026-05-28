@@ -1,6 +1,7 @@
 import {
     BadRequestException,
     ConflictException,
+    Inject,
     Injectable,
     NotFoundException,
     UnauthorizedException,
@@ -21,6 +22,7 @@ import { QueryRunner } from 'typeorm/browser';
 import { basename, isAbsolute, join, relative } from 'path';
 import { MovieUserLike } from './entity/movie-user-like.entity';
 import { User } from 'src/user/entity/user.entity';
+import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
 
 @Injectable()
 export class MovieService {
@@ -34,6 +36,7 @@ export class MovieService {
         @InjectRepository(User) private readonly userRepository: Repository<User>,
         private readonly dataSource: DataSource,
         private readonly commonService: CommonService,
+        @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
     ) {}
 
     /** DB 트랜잭션 실패 시 멀터가 이미 저장한 디스크 파일 제거 */
@@ -52,6 +55,24 @@ export class MovieService {
             .filter((v) => typeof v === 'string')
             .map((v) => v.trim())
             .filter((v) => v.length > 0);
+    }
+
+    async findMovieRecent() {
+        const cacheKey = 'MOVIE_RECENT';
+
+        const cacheData = await this.cacheManager.get(cacheKey);
+
+        if (cacheData) {
+            return cacheData;
+        }
+
+        const data = await this.movieRepository.find({
+            order: { createAt: 'DESC' },
+            take: 10,
+        });
+
+        await this.cacheManager.set(cacheKey, data);
+        return data;
     }
 
     async findAll(dto: GetMoviesDto, userId?: number) {

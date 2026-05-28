@@ -21,6 +21,7 @@ import { GetMoviesDto } from './dto/get-movies.dto';
 import { TransactionInterceptor } from 'src/common/interceptor/transaction.interceptor';
 import { UserId } from 'src/user/decorator/user-id.decorator';
 import { QueryRunner } from 'src/common/decorator/query-runner.decorator';
+import { CacheInterceptor, CacheKey, CacheTTL } from '@nestjs/cache-manager';
 
 @Controller('movie')
 export class MovieController {
@@ -30,6 +31,13 @@ export class MovieController {
     @Get()
     findAll(@Query() dto: GetMoviesDto, @UserId() userId?: number) {
         return this.movieService.findAll(dto, userId);
+    }
+
+    @Public()
+    // @UseInterceptors(CacheInterceptor)
+    @Get('recent')
+    async getMoviesRecent() {
+        return this.movieService.findMovieRecent();
     }
 
     @Public()
