@@ -4,6 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 import { NextFunction, Request, Response } from 'express';
 import { envVariableKeys } from 'src/common/const/env.const';
 import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager';
+import { createHash } from 'crypto';
 
 @Injectable()
 export class BearerTokenMiddleware implements NestMiddleware {
@@ -14,7 +15,7 @@ export class BearerTokenMiddleware implements NestMiddleware {
     ) {}
 
     validateBearerToken(rawToken: string) {
-        console.log('rawToken', rawToken);
+        // console.log('rawToken', rawToken);
         const bearerSplit = rawToken.split(' ');
         if (bearerSplit.length !== 2) {
             throw new BadRequestException('토큰포맷이 잘못되었습니다. 확인해주세요!');
@@ -37,21 +38,13 @@ export class BearerTokenMiddleware implements NestMiddleware {
         }
 
         const token = this.validateBearerToken(authHeader);
+        const tokenHash = createHash('sha256').update(token).digest('hex');
 
-        const tokenCacheKey = `TOKEN_${token}`;
-        const blockTokenKey = `BLOCK_TOKEN_${token}`;
-        const cachePayload = await this.cacheManger.get(tokenCacheKey);
+        const blockTokenKey = `auth:block:${tokenHash}`;
         const blockedTokenPayload = await this.cacheManger.get(blockTokenKey);
 
         if (blockedTokenPayload) {
             throw new UnauthorizedException('토큰이 블락되었습니다. 다시 재발급해주세요!');
-        }
-
-        // console.log('cachePayload', cachePayload);
-        if (cachePayload) {
-            // console.log('cachePayload 있음!');
-            req.user = cachePayload;
-            return next();
         }
 
         try {

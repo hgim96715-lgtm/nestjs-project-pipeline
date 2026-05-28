@@ -7,6 +7,7 @@ import { ConfigService } from '@nestjs/config';
 import { envVariableKeys } from 'src/common/const/env.const';
 import { JwtService } from '@nestjs/jwt';
 import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
+import { createHash } from 'crypto';
 
 @Injectable()
 export class AuthService {
@@ -24,7 +25,10 @@ export class AuthService {
         const now = Date.now();
         const diff = (+expiryDate - now) / 1000;
 
-        const blockTokenKey = `BLOCK_TOKEN_${token}`;
+        const tokenHash = createHash('sha256').update(token).digest('hex');
+        const blockTokenKey = `auth:block:${tokenHash}`;
+
+        // const blockTokenKey = `BLOCK_TOKEN_${token}`;
 
         const remainingTime = Math.max(diff * 1000, 1);
 
