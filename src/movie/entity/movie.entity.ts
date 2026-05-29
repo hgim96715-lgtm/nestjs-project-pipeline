@@ -28,6 +28,9 @@ export class Movie extends BaseTable {
     @Column({ default: 0 })
     likeCount: number;
 
+    @Column({ default: 0 })
+    dislikeCount: number;
+
     @OneToMany(() => MovieFile, (file) => file.movie, { cascade: true })
     files: MovieFile[];
 
