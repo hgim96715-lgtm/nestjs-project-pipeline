@@ -7,37 +7,42 @@ import { Repository } from 'typeorm';
 
 @Injectable()
 export class UserService {
-  constructor(@InjectRepository(User) private readonly userRepository:Repository<User>){}
+    constructor(@InjectRepository(User) private readonly userRepository: Repository<User>) {}
 
-  create(createUserDto: CreateUserDto) {
-    return this.userRepository.save(createUserDto);
-  }
-
-  findAll() {
-    return this.userRepository.find();
-  }
-
-  async findOne(id: number) {
-    const user= await this.userRepository.findOne({where:{id}})
-    
-    if(!user){
-      throw new NotFoundException('존재하지 않는 사용자입니다.')
+    create(createUserDto: CreateUserDto) {
+        return this.userRepository.save(createUserDto);
     }
-    return user;
-  }
 
-  async update(id: number, updateUserDto: UpdateUserDto) {
-    const user= await this.userRepository.findOne({where:{id}})
-
-    if(!user){
-      throw new NotFoundException('존재하지 않는 id입니다.')
+    findAll() {
+        return this.userRepository.find();
     }
-    await this.userRepository.update({id},updateUserDto);
 
-    return this.userRepository.findOne({where:{id}});
-  }
+    async findOne(id: number) {
+        const user = await this.userRepository.findOne({ where: { id } });
 
-  remove(id: number) {
-    return this.userRepository.delete(id);
-  }
+        if (!user) {
+            throw new NotFoundException('존재하지 않는 사용자입니다.');
+        }
+        return user;
+    }
+
+    async update(id: number, updateUserDto: UpdateUserDto) {
+        const user = await this.userRepository.findOne({ where: { id } });
+
+        if (!user) {
+            throw new NotFoundException('존재하지 않는 id입니다.');
+        }
+        await this.userRepository.update({ id }, updateUserDto);
+
+        return this.userRepository.findOne({ where: { id } });
+    }
+
+    async remove(id: number) {
+        const user = await this.userRepository.findOne({ where: { id } });
+        if (!user) {
+            throw new NotFoundException('존재하지 않는 사용자입니다.');
+        }
+        await this.userRepository.delete(id);
+        return `${id}번 사용자가 삭제되었습니다.`;
+    }
 }
