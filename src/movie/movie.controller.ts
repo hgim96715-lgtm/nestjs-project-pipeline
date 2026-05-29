@@ -10,6 +10,7 @@ import {
     ParseIntPipe,
     Query,
     UseInterceptors,
+    Version,
 } from '@nestjs/common';
 import { MovieService } from './movie.service';
 import { CreateMovieDto } from './dto/create-movie.dto';
