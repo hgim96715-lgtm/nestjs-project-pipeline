@@ -2,8 +2,10 @@ import { Controller, Post, UploadedFiles, UseInterceptors } from '@nestjs/common
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { movieUploadStorage } from './config/movie-upload.storage';
 import { MovieFilesPipe } from 'src/movie/pipe/movie-files.pipe';
+import { ApiBearerAuth } from '@nestjs/swagger';
 
 @Controller('common')
+@ApiBearerAuth()
 export class CommonController {
     @Post('video')
     @UseInterceptors(

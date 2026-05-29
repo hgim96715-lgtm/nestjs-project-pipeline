@@ -40,6 +40,9 @@ export class AuthService {
     parseBasicToken(rawToken: string) {
         // Basic {token}
         // console.log(rawToken)
+        if (!rawToken) {
+            throw new BadRequestException('Authorization 헤더가 필요합니다.');
+        }
         const basicSplit = rawToken.split(' ');
 
         if (basicSplit.length !== 2) {

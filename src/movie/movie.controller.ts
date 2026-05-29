@@ -23,7 +23,9 @@ import { TransactionInterceptor } from 'src/common/interceptor/transaction.inter
 import { UserId } from 'src/user/decorator/user-id.decorator';
 import { QueryRunner } from 'src/common/decorator/query-runner.decorator';
 import { CacheInterceptor, CacheKey, CacheTTL } from '@nestjs/cache-manager';
+import { ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiBearerAuth()
 @Controller('movie')
 export class MovieController {
     constructor(private readonly movieService: MovieService) {}

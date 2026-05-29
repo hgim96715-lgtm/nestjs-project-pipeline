@@ -3,35 +3,37 @@ import { GenreService } from './genre.service';
 import { CreateGenreDto } from './dto/create-genre.dto';
 import { UpdateGenreDto } from './dto/update-genre.dto';
 import { Public } from 'src/auth/decorator/public.decorator';
+import { ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiBearerAuth()
 @Controller('genre')
 export class GenreController {
-  constructor(private readonly genreService: GenreService) {}
+    constructor(private readonly genreService: GenreService) {}
 
-  @Post()
-  create(@Body() createGenreDto: CreateGenreDto) {
-    return this.genreService.create(createGenreDto);
-  }
+    @Post()
+    create(@Body() createGenreDto: CreateGenreDto) {
+        return this.genreService.create(createGenreDto);
+    }
 
-  @Public()
-  @Get()
-  findAll() {
-    return this.genreService.findAll();
-  }
-  
-  @Public()
-  @Get(':id')
-  findOne(@Param('id',ParseIntPipe) id: number) {
-    return this.genreService.findOne(id);
-  }
+    @Public()
+    @Get()
+    findAll() {
+        return this.genreService.findAll();
+    }
 
-  @Patch(':id')
-  update(@Param('id',ParseIntPipe) id: number, @Body() updateGenreDto: UpdateGenreDto) {
-    return this.genreService.update(id, updateGenreDto);
-  }
+    @Public()
+    @Get(':id')
+    findOne(@Param('id', ParseIntPipe) id: number) {
+        return this.genreService.findOne(id);
+    }
 
-  @Delete(':id')
-  remove(@Param('id',ParseIntPipe) id: number) {
-    return this.genreService.remove(id);
-  }
+    @Patch(':id')
+    update(@Param('id', ParseIntPipe) id: number, @Body() updateGenreDto: UpdateGenreDto) {
+        return this.genreService.update(id, updateGenreDto);
+    }
+
+    @Delete(':id')
+    remove(@Param('id', ParseIntPipe) id: number) {
+        return this.genreService.remove(id);
+    }
 }

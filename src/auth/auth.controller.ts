@@ -17,22 +17,27 @@ import { JwtAuthGuard } from './strategy/jwt.strategy';
 import { RBAC } from './decorator/rbac.decorator';
 import { Role } from 'src/user/entity/user.entity';
 import { minutes, Throttle } from '@nestjs/throttler';
+import { ApiBasicAuth, ApiBearerAuth } from '@nestjs/swagger';
+import { Authorization } from './decorator/authorization.decorator';
 
 @Controller('auth')
+@ApiBearerAuth()
 @UseInterceptors(ClassSerializerInterceptor)
 export class AuthController {
     constructor(private readonly authService: AuthService) {}
 
     @Public()
+    @ApiBasicAuth()
     @Post('register')
     registrUser(@Headers('authorization') token: string) {
         return this.authService.register(token);
     }
 
     @Public()
+    @ApiBasicAuth()
     @Throttle({ default: { ttl: minutes(1), limit: 5 } })
     @Post('login')
-    loginUser(@Headers('authorization') token: string) {
+    loginUser(@Authorization() token: string) {
         return this.authService.login(token);
     }
 
