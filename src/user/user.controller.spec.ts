@@ -12,6 +12,10 @@ const mockUserRepository = {
     delete: jest.fn(),
 };
 
+const mockUserService = {
+    getOrThrow: jest.fn(),
+};
+
 describe('UserController', () => {
     let controller: UserController;
 
@@ -23,6 +27,10 @@ describe('UserController', () => {
                 {
                     provide: getRepositoryToken(User),
                     useValue: mockUserRepository,
+                },
+                {
+                    provide: UserService,
+                    useValue: mockUserService,
                 },
             ],
         }).compile();
