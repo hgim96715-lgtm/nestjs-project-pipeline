@@ -8,12 +8,14 @@ import { envVariableKeys } from 'src/common/const/env.const';
 import { JwtService } from '@nestjs/jwt';
 import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
 import { createHash } from 'crypto';
+import { UserService } from 'src/user/user.service';
 
 @Injectable()
 export class AuthService {
     constructor(
         @InjectRepository(User) private readonly userRepository: Repository<User>,
         private readonly configService: ConfigService,
+        private readonly userService: UserService,
         private readonly jwtService: JwtService,
         @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
     ) {}
@@ -108,18 +110,7 @@ export class AuthService {
     async register(rawToken: string) {
         const { email, password } = this.parseBasicToken(rawToken);
 
-        const user = await this.userRepository.findOne({ where: { email } });
-
-        if (user) {
-            throw new ConflictException('이미 가입한 이메일입니다.');
-        }
-
-        const hash = await bcrypt.hash(password, this.configService.getOrThrow<number>(envVariableKeys.hashRounds));
-
-        // await this.userRepository.save({email,password:hash}) default user
-        await this.userRepository.save({ email, password: hash, role: Role.admin });
-
-        return this.userRepository.findOne({ where: { email } });
+        return this.userService.create({ email, password });
     }
 
     async authenticate(email: string, password: string) {
