@@ -25,6 +25,8 @@ import { CommonController } from './common/common.controller';
 import { CacheModule } from '@nestjs/cache-manager';
 import { minutes, Throttle, ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
+import { WinstonModule } from 'nest-winston';
+import * as winston from 'winston';
 
 @Module({
     imports: [
@@ -82,6 +84,32 @@ import { ScheduleModule } from '@nestjs/schedule';
             errorMessage: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.',
         }),
         ScheduleModule.forRoot(),
+        WinstonModule.forRoot({
+            level: 'debug',
+            transports: [
+                new winston.transports.Console({
+                    format: winston.format.combine(
+                        winston.format.colorize({ all: true }),
+                        winston.format.timestamp(),
+                        winston.format.printf((info) => {
+                            const { timestamp, context, level, message, ...meta } = info;
+                            const metaString = Object.keys(meta).length > 0 ? JSON.stringify(meta) : '';
+                            return `${timestamp} [${context ?? ''}] ${level}: ${message} ${metaString}`;
+                        }),
+                    ),
+                }),
+                new winston.transports.File({
+                    dirname: join(process.cwd(), 'logs'),
+                    filename: 'error.log',
+                    level: 'error',
+                }),
+                new winston.transports.File({
+                    dirname: join(process.cwd(), 'logs'),
+                    filename: 'combined.log',
+                    level: 'info',
+                }),
+            ],
+        }),
     ],
     controllers: [CommonController],
     providers: [
