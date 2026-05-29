@@ -103,11 +103,6 @@ import * as winston from 'winston';
                     filename: 'error.log',
                     level: 'error',
                 }),
-                new winston.transports.File({
-                    dirname: join(process.cwd(), 'logs'),
-                    filename: 'combined.log',
-                    level: 'info',
-                }),
             ],
         }),
     ],

@@ -6,7 +6,6 @@ import { movieUploadStorage } from './config/movie-upload.storage';
 import { TasksService } from './tasks.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Movie } from 'src/movie/entity/movie.entity';
-import { DefaultLogger } from './logger/default.logger';
 
 @Module({
     imports: [
@@ -15,8 +14,8 @@ import { DefaultLogger } from './logger/default.logger';
         }),
         TypeOrmModule.forFeature([Movie]),
     ],
-    providers: [CommonService, TasksService, DefaultLogger],
-    exports: [CommonService, DefaultLogger],
+    providers: [CommonService, TasksService],
+    exports: [CommonService],
     controllers: [CommonController],
 })
 export class CommonModule {}
