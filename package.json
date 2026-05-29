@@ -96,6 +96,11 @@
         "collectCoverageFrom": [
             "**/*.(t|j)s"
         ],
+        "coveragePathIgnorePatterns": [
+            "\\.module\\.ts$",
+            "\\.dto\\.ts$",
+            "\\.entity\\.ts$"
+        ],
         "coverageDirectory": "./coverage",
         "moduleNameMapper": {
             "src/(.*)": "<rootDir>/src/$1"
