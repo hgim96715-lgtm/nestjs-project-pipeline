@@ -25,7 +25,6 @@ import { QueryRunner } from 'src/common/decorator/query-runner.decorator';
 import { CacheInterceptor, CacheKey, CacheTTL } from '@nestjs/cache-manager';
 import { ApiBearerAuth } from '@nestjs/swagger';
 
-@ApiBearerAuth()
 @Controller('movie')
 export class MovieController {
     constructor(private readonly movieService: MovieService) {}
@@ -49,6 +48,7 @@ export class MovieController {
         return this.movieService.findOne(id);
     }
 
+    @ApiBearerAuth()
     @RBAC(Role.admin)
     @Post()
     @UseInterceptors(TransactionInterceptor)
@@ -57,22 +57,26 @@ export class MovieController {
     }
 
     // 좋아요 & 좋아요 취소
+    @ApiBearerAuth()
     @Post(':id/like')
     createMovieLike(@Param('id', ParseIntPipe) movieId: number, @UserId() userId: number) {
         return this.movieService.toggleMovieLie(movieId, userId, true);
     }
 
+    @ApiBearerAuth()
     @Post(':id/unlike')
     createMovieUnlike(@Param('id', ParseIntPipe) movieId: number, @UserId() userId: number) {
         return this.movieService.toggleMovieLie(movieId, userId, false);
     }
 
+    @ApiBearerAuth()
     @RBAC(Role.paidUser)
     @Patch(':id')
     update(@Param('id', ParseIntPipe) id: number, @Body() updateMovieDto: UpdateMovieDto) {
         return this.movieService.update(id, updateMovieDto);
     }
 
+    @ApiBearerAuth()
     @RBAC(Role.admin)
     @Delete(':id')
     remove(@Param('id', ParseIntPipe) id: number) {
