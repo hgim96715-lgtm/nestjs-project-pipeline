@@ -5,7 +5,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Role, User } from './entity/user.entity';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
-import * as crypto from 'crypto';
 import { envVariableKeys } from 'src/common/const/env.const';
 import * as bcrypt from 'bcrypt';
 
@@ -52,7 +51,18 @@ export class UserService {
         if (!user) {
             throw new NotFoundException('존재하지 않는 id입니다.');
         }
-        await this.userRepository.update({ id }, updateUserDto);
+
+        const { password, ...rest } = updateUserDto;
+        const updatePayload: UpdateUserDto = { ...rest };
+
+        if (password) {
+            updatePayload.password = await bcrypt.hash(
+                password,
+                this.configService.getOrThrow<string>(envVariableKeys.saltrounds),
+            );
+        }
+
+        await this.userRepository.update({ id }, updatePayload);
 
         return this.userRepository.findOne({ where: { id } });
     }

@@ -7,6 +7,7 @@ import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 import { CreateUserDto } from './dto/create-user.dto';
 import * as bcrypt from 'bcrypt';
+import { UpdateUserDto } from './dto/update-user.dto';
 
 jest.mock('bcrypt', () => ({
     hash: jest.fn(),
@@ -125,6 +126,78 @@ describe('UserService', () => {
             jest.spyOn(mockUserRepository, 'findOne').mockResolvedValue(null);
             await expect(service.findOne(999)).rejects.toThrow(NotFoundException);
             expect(mockUserRepository.findOne).toHaveBeenCalledWith({ where: { id: 999 } });
+        });
+    });
+
+    describe('update', () => {
+        it('should update a user if exists and return the updated user', async () => {
+            const updateUserDto: UpdateUserDto = {
+                email: 'test@test.com',
+                password: 'password',
+            };
+
+            const saltRounds = 10;
+            const hashedPassword = 'hashedPassword';
+
+            const exitUser = {
+                id: 1,
+                email: 'test@test.com',
+                password: 'hashedPassword',
+                role: Role.admin,
+            };
+
+            jest.spyOn(mockUserRepository, 'findOne').mockResolvedValueOnce(exitUser);
+            jest.spyOn(mockConfigService, 'getOrThrow').mockReturnValue(saltRounds);
+            (bcrypt.hash as jest.Mock).mockResolvedValue(hashedPassword);
+            jest.spyOn(mockUserRepository, 'update').mockResolvedValue(undefined);
+            jest.spyOn(mockUserRepository, 'findOne').mockResolvedValueOnce({
+                ...exitUser,
+                password: hashedPassword,
+            });
+            const result = await service.update(1, updateUserDto);
+            expect(result).toEqual({ ...exitUser, password: hashedPassword });
+            expect(mockUserRepository.findOne).toHaveBeenNthCalledWith(1, { where: { id: 1 } });
+            expect(mockUserRepository.findOne).toHaveBeenNthCalledWith(2, { where: { id: 1 } });
+            expect(mockUserRepository.update).toHaveBeenCalledWith(
+                { id: exitUser.id },
+                { email: updateUserDto.email, password: hashedPassword },
+            );
+            expect(bcrypt.hash).toHaveBeenCalledWith(updateUserDto.password, saltRounds);
+        });
+
+        it('should throw a NotFoundException if user not found', async () => {
+            jest.spyOn(mockUserRepository, 'findOne').mockResolvedValue(null);
+            const updateUserDto: UpdateUserDto = {
+                email: 'test@test.com',
+                password: 'password',
+            };
+            await expect(service.update(999, updateUserDto)).rejects.toThrow(NotFoundException);
+            expect(mockUserRepository.findOne).toHaveBeenCalledWith({ where: { id: 999 } });
+            expect(mockUserRepository.update).not.toHaveBeenCalled();
+        });
+
+        it('should update email without hashing when password is omitted', async () => {
+            const updateUserDto: UpdateUserDto = {
+                email: 'test@test.com',
+            };
+            const exitUser = {
+                id: 1,
+                email: 'test@test.com',
+                password: 'hashedPassword',
+                role: Role.admin,
+            };
+            jest.spyOn(mockUserRepository, 'findOne').mockResolvedValueOnce(exitUser);
+            jest.spyOn(mockUserRepository, 'update').mockResolvedValue(undefined);
+            jest.spyOn(mockUserRepository, 'findOne').mockResolvedValueOnce({
+                ...exitUser,
+                email: updateUserDto.email,
+            });
+            const result = await service.update(1, updateUserDto);
+            expect(result).toEqual({ ...exitUser, email: updateUserDto.email });
+            expect(mockUserRepository.findOne).toHaveBeenNthCalledWith(1, { where: { id: 1 } });
+            expect(mockUserRepository.findOne).toHaveBeenNthCalledWith(2, { where: { id: 1 } });
+            expect(mockUserRepository.update).toHaveBeenCalledWith({ id: exitUser.id }, { email: updateUserDto.email });
+            expect(bcrypt.hash).not.toHaveBeenCalled();
         });
     });
 
