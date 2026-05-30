@@ -7,6 +7,7 @@ import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 import { envVariableKeys } from 'src/common/const/env.const';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UserService {
@@ -24,7 +25,7 @@ export class UserService {
             throw new ConflictException('이미 가입한 이메일입니다.');
         }
 
-        const hash = await crypto.hash(password, this.configService.getOrThrow<string>(envVariableKeys.saltrounds));
+        const hash = await bcrypt.hash(password, this.configService.getOrThrow<string>(envVariableKeys.saltrounds));
 
         // await this.userRepository.save({email,password:hash}) default user
         await this.userRepository.save({ email, password: hash, role: Role.admin });
