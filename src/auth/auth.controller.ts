@@ -53,7 +53,7 @@ export class AuthController {
     @Post('login/passport')
     async loginUserPassport(@Request() req) {
         return {
-            refeshToken: await this.authService.issueToken(req.user, true),
+            refreshToken: await this.authService.issueToken(req.user, true),
             accessToken: await this.authService.issueToken(req.user, false),
         };
     }
