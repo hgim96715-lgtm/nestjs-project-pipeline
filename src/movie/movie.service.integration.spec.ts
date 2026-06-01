@@ -194,11 +194,15 @@ describe('MovieService - Integration Test', () => {
             const movieId = movies[0].id;
             const result = await service.findOne(movieId);
             expect(result).toHaveProperty('id');
-            expect(result!.title).toBe(movies[0].title);
-            expect(result!.detail).toHaveProperty('id');
-            expect(result!.detail.detail).toBe(movies[0].detail.detail);
-            expect(result!.director.id).toBe(movies[0].director.id);
-            expect(result!.genres.map((x) => x.id)).toEqual(movies[0].genres.map((x) => x.id));
+            expect(result.title).toBe(movies[0].title);
+            expect(result.detail).toHaveProperty('id');
+            expect(result.detail.detail).toBe(movies[0].detail.detail);
+            expect(result.director.id).toBe(movies[0].director.id);
+            expect(result.genres.map((x) => x.id)).toEqual(movies[0].genres.map((x) => x.id));
+        });
+
+        it('should throw NotFoundException when movie does not exist', async () => {
+            await expect(service.findOne(99999)).rejects.toThrow(NotFoundException);
         });
     });
 

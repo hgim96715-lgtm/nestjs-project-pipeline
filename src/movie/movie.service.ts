@@ -129,6 +129,11 @@ export class MovieService {
             .leftJoinAndSelect('movie.files', 'files')
             .where('movie.id=:id', { id })
             .getOne();
+
+        if (!movie) {
+            throw new NotFoundException(`id가 ${id}인 영화는 존재하지 않습니다.`);
+        }
+
         return movie;
     }
 

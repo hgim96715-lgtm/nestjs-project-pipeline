@@ -231,6 +231,17 @@ describe('MovieService', () => {
             expect(qbMock.where).toHaveBeenCalledWith('movie.id=:id', { id: 1 });
             expect(result).toEqual(movie);
         });
+
+        it('should throw NotFoundException when movie does not exist', async () => {
+            const qbMock = {
+                leftJoinAndSelect: jest.fn().mockReturnThis(),
+                where: jest.fn().mockReturnThis(),
+                getOne: jest.fn().mockResolvedValue(null),
+            } as unknown as SelectQueryBuilder<Movie>;
+            jest.spyOn(movieRepository, 'createQueryBuilder').mockReturnValue(qbMock);
+
+            await expect(service.findOne(999)).rejects.toThrow(NotFoundException);
+        });
     });
     describe('create', () => {
         it('should create a new movie without files and return it', async () => {
