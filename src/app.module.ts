@@ -57,6 +57,9 @@ import * as winston from 'winston';
                 //
                 autoLoadEntities: true,
                 synchronize: true,
+                ssl: {
+                    rejectUnauthorized: false,
+                },
             }),
             inject: [ConfigService],
         }),
