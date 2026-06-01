@@ -23,6 +23,7 @@ import { basename, isAbsolute, join, relative } from 'path';
 import { MovieUserLike } from './entity/movie-user-like.entity';
 import { User } from 'src/user/entity/user.entity';
 import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
+import { normalizeTempRefs } from './utils/normalize-temp-refs';
 
 @Injectable()
 export class MovieService {
@@ -39,23 +40,14 @@ export class MovieService {
         @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
     ) {}
 
-    /** DB 트랜잭션 실패 시 멀터가 이미 저장한 디스크 파일 제거 */
-    private async cleanupUploadedFiles(movies?: Express.Multer.File[]) {
-        if (!movies?.length) {
-            return;
-        }
+    // /** DB 트랜잭션 실패 시 멀터가 이미 저장한 디스크 파일 제거 */
+    // private async cleanupUploadedFiles(movies?: Express.Multer.File[]) {
+    //     if (!movies?.length) {
+    //         return;
+    //     }
 
-        await Promise.all(movies.map((file) => unlink(file.path).catch(() => undefined)));
-    }
-
-    //파일 경로 문자열 정리를 위해
-    private normalizeTempRefs(files?: string[]) {
-        if (!files?.length) return [];
-        return files
-            .filter((v) => typeof v === 'string')
-            .map((v) => v.trim())
-            .filter((v) => v.length > 0);
-    }
+    //     await Promise.all(movies.map((file) => unlink(file.path).catch(() => undefined)));
+    // }
 
     async findMovieRecent() {
         const cacheKey = 'MOVIE_RECENT';
@@ -141,7 +133,7 @@ export class MovieService {
     }
 
     async create(createMovieDto: CreateMovieDto, files: string[], qr: QueryRunner, userId: number) {
-        const refs = this.normalizeTempRefs(files);
+        const refs = normalizeTempRefs(files);
 
         try {
             const titleExists = await qr.manager.exists(Movie, {
