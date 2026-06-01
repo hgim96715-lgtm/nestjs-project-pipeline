@@ -28,7 +28,7 @@ NestJS로 **영화·감독·장르 도메인 REST API**를 설계·구현하고,
   - Movie ↔ MovieDetail (1:1)
   - Movie ↔ Genre (N:M)
   - Movie → Director (N:1)
-- **ConfigModule + Joi**로 DB·JWT·bcrypt 환경변수 검증
+- **ConfigModule + Joi**로 DB·JWT·`SALT_ROUNDS`(bcrypt cost) 환경변수 검증
 - **Docker Compose**로 PostgreSQL 로컬 개발 환경 구성
 - Director: `name + dob` **복합 Unique** (동명이인 허용, 동일 인물 중복 방지)
 - Genre: 이름 중복 검증, **연결된 영화가 있으면 삭제 차단**
@@ -43,8 +43,9 @@ NestJS로 **영화·감독·장르 도메인 REST API**를 설계·구현하고,
 
 ### 3단계 — 인증·인가 (Basic → JWT → Passport → RBAC)
 
-- **User** 엔티티 (`email`, `password`, `Role`), bcrypt 해시
+- **User** 엔티티 (`email`, `password`, `Role`), bcrypt 해시 (`SALT_ROUNDS`)
 - **Basic 인증** 기반 회원가입·로그인 → **access / refresh JWT** 발급
+- 회원 생성은 **`UserService.create`** 한 곳에서 처리 (이메일 중복 검증 → 해시 → 저장)
 - **Passport** Local·JWT Strategy, Bearer 토큰 검증 엔드포인트
 - **전역 AuthGuard** + `@Public()` 데코레이터
 - **BearerTokenMiddleware**: Authorization 헤더 파싱·검증 → `req.user` 주입 (login/register 제외)
@@ -95,6 +96,47 @@ NestJS로 **영화·감독·장르 도메인 REST API**를 설계·구현하고,
   - DTO `@ApiProperty`, `UpdateMovieDto`는 `@nestjs/swagger`의 `PartialType`으로 스키마 상속
 - **쿼리/배열 DTO 보완**: `order`, `files` 등 단일 문자열 쿼리/바디 값을 `@Transform`으로 배열 정규화 (`order must be an array` 등 검증 오류 방지)
 
+### 9단계 — User 도메인 정리 & 단위 테스트
+
+- **`UserService.create`로 회원 생성 로직 통합**
+  - `CreateUserDto` (`@IsEmail`, `@IsString`) — `email`, `password` 검증
+  - 이메일 중복 시 `ConflictException`, bcrypt 해시 후 저장
+  - `AuthService.register`는 Basic 토큰 파싱 후 **`userService.create` 위임** (중복 로직 제거)
+  - `UserModule`에서 `UserService` export → `AuthModule` import
+- **환경변수 rename**: `HASH_ROUNDS` → **`SALT_ROUNDS`** (bcrypt cost factor 용어에 맞춤)
+- **User 모듈 단위 테스트** (`user.service.spec.ts`, `user.controller.spec.ts`)
+  - `findAll` / `findOne` / `remove` / `create` — TypeORM repository·`ConfigService` mock
+  - `pnpm test:user` — user 모듈 coverage 수집
+  - `pnpm test:user:watch` — watch 모드
+  - coverage 제외: `*.module.ts`, `*.dto.ts`, `*.entity.ts`
+
+### 10단계 — 테스트 확장 (단위 · 통합 · E2E)
+
+- **Movie**
+  - `MovieService` / `MovieController` 단위 테스트 보강 (create·update·파일 이동·like 등)
+  - **`movie.service.integration.spec.ts`** — PostgreSQL `movie_test` DB, QueryRunner·캐시·like 검증
+  - **`test/movie.e2e-spec.ts`** — Supertest HTTP E2E
+    - 공개 `GET` (목록·recent·단건), **미존재 id → 404** (`findOne` `NotFoundException`)
+    - RBAC·JWT: `POST`·`PATCH`·`DELETE`·like/unlike (admin / paidUser / user)
+    - **2-step 업로드**: `POST /v1/common/video` → `files` → `POST /v1/movie`
+- **Common**
+  - `CommonService` 커서·offset 페이지네이션 단위 테스트 (복합 cursor·`addOrderBy` 등)
+  - `CommonController` · **`MovieFilesPipe`** · **`MovieTitleValidationPipe`** 단위 테스트
+  - **`test/common.e2e-spec.ts`** — `POST /v1/common/video` (403·mimetype 400·업로드 성공)
+- **Auth**
+  - **`test/auth.e2e-spec.ts`** — register, login(성공/실패), `GET /v1/auth/private` (403·access/refresh)
+- **Genre · Director**
+  - **`genre.service.integration.spec.ts`** — 이름 중복, 수정 충돌, **연결 영화 있을 때 삭제 차단**
+  - **`director.service.integration.spec.ts`** — `name + dob` 중복, 수정·삭제
+- **E2E 공통 인프라** (`test/`)
+  - `load-integration-env.ts` — `.env` + `.env.test` 로드, **`DB_DATABASE`는 `*_test` 필수**
+  - `integration-db.helpers.ts` — 통합 테스트용 TypeORM·엔티티 공통 설정
+  - `e2e-app.helpers.ts` — 버저닝·`ValidationPipe` 포함 Nest 앱 부트스트랩
+  - `e2e-auth.helpers.ts` — 시드 유저(admin/paidUser/user), JWT 발급·Basic 헤더
+  - `e2e-upload.helpers.ts` — temp video 업로드 헬퍼
+  - `jest-e2e.json` · `uuid.mock.ts` — E2E·단위에서 uuid ESM 이슈 회피
+- **수동 API 확인 페이지**: `public/movie/index.html` (`GET` / `POST` 조회용, `/public/movie/`)
+
 ---
 
 ## 기술 스택
@@ -110,6 +152,19 @@ NestJS로 **영화·감독·장르 도메인 REST API**를 설계·구현하고,
 | **문서** | @nestjs/swagger |
 | **파일** | @nestjs/platform-express, multer, diskStorage |
 | **인프라** | Docker Compose, pnpm |
+| **테스트** | Jest, ts-jest, Supertest, @nestjs/testing |
+
+---
+
+## 환경 변수 (요약)
+
+| 변수 | 설명 |
+| --- | --- |
+| `ENV` | `dev` \| `prod` |
+| `DB_*` | PostgreSQL 연결 (`TYPE`, `HOST`, `PORT`, `USER`, `PASSWORD`, `DATABASE`) |
+| `SALT_ROUNDS` | bcrypt password hashing cost (숫자) |
+| `ACCESS_TOKEN_SECRET` | access JWT 서명 키 |
+| `REFRESH_TOKEN_SECRET` | refresh JWT 서명 키 |
 
 ---
 
@@ -136,16 +191,17 @@ NestJS로 **영화·감독·장르 도메인 REST API**를 설계·구현하고,
 
 | 영역 | 내용 |
 | --- | --- |
-| **Movie** | 커서 페이지네이션 목록·단건 조회, 트랜잭션 기반 생성·수정·삭제, MP4 다중 업로드(1~3) |
+| **Movie** | 커서 페이지네이션 목록·단건 조회(**없는 id → 404**), 트랜잭션 기반 생성·수정·삭제, MP4 다중 업로드(1~3), like/unlike |
 | **Director** | CRUD, `name + dob` 중복 검증, RBAC (생성·삭제 admin, 수정 paidUser) |
 | **Genre** | CRUD, 이름 중복·연결 영화 삭제 제한, 조회 Public |
-| **User** | CRUD, password 응답 제외 (`ClassSerializerInterceptor`) |
+| **User** | CRUD, `create` 시 이메일 중복·bcrypt 해시, password 응답 제외 (`ClassSerializerInterceptor`) |
 
 ### 인증·인가
 
 | 영역 | 내용 |
 | --- | --- |
-| 회원가입·로그인 | Basic → JWT access·refresh |
+| 회원가입 | `POST /v1/auth/register` (Basic) 또는 `POST /v1/user` (JSON) → **`UserService.create`** |
+| 로그인 | Basic → JWT access·refresh |
 | Passport | Local / JWT Strategy |
 | Middleware | BearerTokenMiddleware → `req.user` |
 | Guard | AuthGuard (`@Public`, access 토큰), RBACGuard (`@RBAC`) |
@@ -178,9 +234,10 @@ NestJS로 **영화·감독·장르 도메인 REST API**를 설계·구현하고,
 
 ```
 AppModule
-├── ConfigModule (전역, Joi)
+├── ConfigModule (전역, Joi — SALT_ROUNDS 등)
 ├── TypeOrmModule (async)
 ├── MovieModule / DirectorModule / GenreModule / UserModule / AuthModule / CommonModule
+│   └── AuthModule → UserModule (UserService 재사용)
 ├── ScheduleModule.forRoot()
 ├── WinstonModule.forRoot (Console + logs/error.log)
 ├── APP_GUARD: ThrottlerGuard → AuthGuard → RBACGuard
@@ -205,6 +262,13 @@ Movie POST (생성) — POST /v1/movie
     ├── temp 파일 존재 검증(stat)
     ├── public/movie/{movieId} 디렉토리 생성
     └── rename(이동) + MovieFile DB 저장
+
+User POST (회원 생성) — 두 진입점, 동일 서비스
+├── POST /v1/auth/register — AuthService.register → parseBasicToken → UserService.create
+└── POST /v1/user — UserController.create → UserService.create
+    ├── email 중복 검증
+    ├── bcrypt.hash(password, SALT_ROUNDS)
+    └── User 저장 후 findOne 반환
 ```
 
 ### 요청 처리 순서 (인증 필요 API)
@@ -219,6 +283,7 @@ Movie POST (생성) — POST /v1/movie
 ## 핵심 설계 포인트
 
 - **레이어 분리**: Controller(HTTP) ↔ Service(비즈니스) ↔ Repository/QueryBuilder(DB)
+- **회원 생성 단일화**: Auth·User 진입점이 달라도 **`UserService.create`** 한 곳에서 중복 검증·해시·저장 (DRY)
 - **관계 무결성**: FK 존재 검증, N:M relation API, 삭제 시 연관 데이터 확인
 - **트랜잭션 책임 분리**: 서비스 내부 try/catch → **인터셉터**에서 commit/rollback 일원화
 - **인증 파이프라인**: Middleware(토큰 파싱/블락 확인) + Guard(접근 허용) + RBAC(역할)
@@ -272,6 +337,11 @@ GET /v1/movie?order=id_ASC&order=createAt_DESC&take=5
 | `combined.log` 과다 누적 | 전역 File transport가 Nest 기동 로그까지 기록 → `combined.log` 제거, cron은 `tasks.log`만 사용 |
 | cron이 매시간 실행됨 | 6칸 cron `0 0 * * * *`는 매시 정각 → 매일 자정은 `0 0 0 * * *` |
 | Authorization 헤더 `split` undefined | `@Authorization()` 데코레이터 사용 시 헤더 미전송 → `parseBasicToken`에서 400 처리 |
+| 앱 기동 시 Config Joi 검증 실패 | `.env`에 `HASH_ROUNDS` 대신 **`SALT_ROUNDS`** 사용 (rename 반영) |
+| 통합·E2E DB 오류 | `.env.test`의 `DB_DATABASE`가 `movie_test` 등 **`*_test` 접미사**인지 확인, `pnpm db:test:create` |
+| 통합 테스트 간헐 실패 | 동일 DB TRUNCATE 충돌 → `pnpm test:integration`은 **`--runInBand`** 로 순차 실행 |
+| E2E uuid ESM 오류 | Jest `moduleNameMapper`로 `test/uuid.mock.ts` 사용 (`package.json`·`test/jest-e2e.json`) |
+| E2E login 429 | login 엔드포인트 `@Throttle`(분당 5회) — E2E는 JWT 직접 발급, login은 auth 스펙에서만 제한적으로 호출 |
 
 ---
 
@@ -279,19 +349,106 @@ GET /v1/movie?order=id_ASC&order=createAt_DESC&take=5
 
 | 메서드 | 경로 | 인증 | 설명 |
 | --- | --- | --- | --- |
-| POST | `/v1/auth/register` | Basic | 회원가입 |
+| POST | `/v1/auth/register` | Basic | 회원가입 → `UserService.create` |
 | POST | `/v1/auth/login` | Basic | 로그인, JWT 발급 |
 | POST | `/v1/auth/login/passport` | Local | Passport 로그인 |
 | GET | `/v1/auth/private` | Bearer access | JWT payload 확인 |
 | POST | `/v1/auth/token/access` | Bearer refresh | access 재발급 |
 | POST | `/v1/auth/token/block` | — | 토큰 블락(로그아웃) |
 
+---
+
+## User API 요약
+
+| 메서드 | 경로 | 인증 | 설명 |
+| --- | --- | --- | --- |
+| POST | `/v1/user` | Bearer | 회원 생성 (`CreateUserDto`: email, password) |
+| GET | `/v1/user` | Bearer | 전체 사용자 목록 |
+| GET | `/v1/user/:id` | Bearer | 사용자 단건 조회 |
+| PATCH | `/v1/user/:id` | Bearer | 사용자 수정 |
+| DELETE | `/v1/user/:id` | Bearer | 사용자 삭제 |
 
 ---
 
+## 테스트
+
+### 사전 준비 (통합 · E2E)
+
+1. PostgreSQL 실행 (Docker Compose 등)
+2. `.env.test.example` → **`.env.test`** 복사 후 `DB_DATABASE=movie_test` 설정 (`*_test` 접미사 필수)
+3. 테스트 DB 생성: `pnpm db:test:create`
+
+통합·E2E는 `test/load-integration-env.ts`가 `.env`를 읽은 뒤 `.env.test`로 덮어씁니다. **개발 DB와 분리**해서 사용하세요.
+
+### 명령어
+
+| 명령 | 설명 |
+| --- | --- |
+| `pnpm test` | 전체 단위 테스트 (`src/**/*.spec.ts`, integration·e2e 제외) |
+| `pnpm test:cov` | 전체 coverage |
+| `pnpm test:integration` | 통합 테스트 (`*.integration.spec.ts`, **`--runInBand`**) |
+| `pnpm test:integration:watch` | 통합 watch |
+| `pnpm test:e2e` | E2E 전체 (`test/jest-e2e.json`) |
+| `pnpm test:e2e:movie` | Movie E2E만 |
+| `pnpm test:e2e:common` | Common video 업로드 E2E만 |
+| `pnpm test:e2e:auth` | Auth E2E만 |
+| `pnpm test:movie` | Movie 모듈 단위 + coverage |
+| `pnpm test:movie:watch` | Movie watch + coverage |
+| `pnpm test:common` | Common 모듈 단위 + coverage |
+| `pnpm test:auth` | Auth 모듈 단위 + coverage |
+| `pnpm test:user` | User 모듈 단위 + coverage |
+| `pnpm test:user:watch` | User watch + coverage |
+| `pnpm test:genre` | Genre 모듈 단위 + coverage |
+| `pnpm test:director` | Director 모듈 단위 + coverage |
+
+coverage 수집 시 `*.module.ts`, `*.dto.ts`, `*.entity.ts`는 제외 (비즈니스 로직 위주).
+
+### 테스트 구조 (요약)
+
+| 구분 | 위치 | 내용 |
+| --- | --- | --- |
+| **단위** | `src/**/*.spec.ts` | Service·Controller·Pipe mock 테스트 |
+| **통합** | `src/**/*.integration.spec.ts` | 실 DB (Movie, Genre, Director) |
+| **E2E** | `test/*.e2e-spec.ts` | HTTP Supertest (`AppModule` 전체) |
+| **헬퍼** | `test/*-helpers.ts`, `test/load-integration-env.ts` | DB·앱·인증·업로드 공통 설정 |
+
+### E2E 시나리오 (요약)
+
+| 스펙 | 검증 |
+| --- | --- |
+| `movie.e2e-spec.ts` | 목록·recent·단건(404), RBAC CUD, like, 2-step 업로드, 로그인 스모크 |
+| `common.e2e-spec.ts` | `POST /v1/common/video` — 403, 잘못된 mimetype 400, mp4 업로드 |
+| `auth.e2e-spec.ts` | register, login 401/성공, private 403·access/refresh |
+| `app.e2e-spec.ts` | `GET /v1/movie` 공개 조회 스모크 |
+
+### 통합 테스트 시드·권한 (E2E)
+
+E2E 인증 테스트용 계정 (`test/e2e-auth.helpers.ts`, 비밀번호 `E2eTest1!`):
+
+| 이메일 | Role |
+| --- | --- |
+| `e2e-admin@test.com` | admin (`0`) |
+| `e2e-paid@test.com` | paidUser (`1`) |
+| `e2e-user@test.com` | user (`2`) |
+
+JWT는 대부분 `AuthService.issueToken`으로 발급합니다 (login `@Throttle` 회피). login HTTP 검증은 `auth.e2e-spec.ts`에서 별도 수행합니다.
+
+### 브라우저 수동 확인
+
+서버 기동 후: **`http://localhost:3001/public/movie/index.html`**
+
+- Movie `GET` 목록·recent·단건
+- Bearer 토큰 입력 시 인증 API 호출 가능
+
+---
+
+
 ## 개발 메모·향후 개선
 
+- `.env`의 `HASH_ROUNDS` → **`SALT_ROUNDS`** 로 마이그레이션 (기존 키 사용 시 Joi 검증 실패)
 - 배포 시 TypeORM **Migration** 전환, `synchronize: false`
 - 업로드 파일: 로컬 `public/` → S3 등 오브젝트 스토리지
 - Swagger: DTO·응답 스키마 보강, 환경별 서버 URL 설정
 - 로그: `tasks.log` / `error.log` 로테이션·보관 정책
+- CI: `pnpm test` · `pnpm test:integration` · `pnpm test:e2e` + test DB 파이프라인
+- 테스트: `MovieFilePipe` 단위, `tasks.service` cron, Genre/Director E2E (선택)
