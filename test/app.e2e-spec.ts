@@ -1,29 +1,22 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import './load-integration-env';
+
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
-import { AppModule } from './../src/app.module';
+import { createE2eApp } from './e2e-app.helpers';
 
-describe('AppController (e2e)', () => {
-  let app: INestApplication<App>;
+describe('App (e2e)', () => {
+    let app: INestApplication<App>;
 
-  beforeEach(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
+    beforeAll(async () => {
+        app = await createE2eApp();
+    }, 60_000);
 
-    app = moduleFixture.createNestApplication();
-    await app.init();
-  });
+    afterAll(async () => {
+        await app?.close();
+    });
 
-  it('/ (GET)', () => {
-    return request(app.getHttpServer())
-      .get('/')
-      .expect(200)
-      .expect('Hello World!');
-  });
-
-  afterEach(async () => {
-    await app.close();
-  });
+    it('GET /v1/movie returns 200 without auth', async () => {
+        await request(app.getHttpServer()).get('/v1/movie').query({ take: 1 }).expect(200);
+    });
 });
