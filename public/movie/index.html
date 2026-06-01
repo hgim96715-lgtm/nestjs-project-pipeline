@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Movie API E2E</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --surface: #1a2332;
+      --border: #2d3a4f;
+      --text: #e7ecf3;
+      --muted: #8b9cb3;
+      --accent: #5b9fd4;
+      --accent-hover: #7ab3e0;
+      --error: #e85d5d;
+      --ok: #5cb87a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Pretendard", "Apple SD Gothic Neo", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    .wrap {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+    h1 { font-size: 1.5rem; font-weight: 600; margin: 0 0 0.25rem; }
+    .sub { color: var(--muted); font-size: 0.875rem; margin-bottom: 1.5rem; }
+    section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.25rem;
+      margin-bottom: 1rem;
+    }
+    section h2 {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin: 0 0 1rem;
+    }
+    label { display: block; font-size: 0.8rem; color: var(--muted); margin-bottom: 0.35rem; }
+    input, select {
+      width: 100%;
+      padding: 0.55rem 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 0.9rem;
+      margin-bottom: 0.75rem;
+    }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+    @media (max-width: 600px) { .row { grid-template-columns: 1fr; } }
+    .actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.25rem; }
+    button {
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 6px;
+      background: var(--accent);
+      color: #fff;
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    button:hover { background: var(--accent-hover); }
+    button.secondary { background: transparent; border: 1px solid var(--border); color: var(--text); }
+    button.secondary:hover { border-color: var(--accent); color: var(--accent); }
+    #status {
+      font-size: 0.8rem;
+      margin-bottom: 0.75rem;
+      min-height: 1.25rem;
+    }
+    #status.ok { color: var(--ok); }
+    #status.err { color: var(--error); }
+    pre {
+      margin: 0;
+      padding: 1rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.75rem;
+      overflow: auto;
+      max-height: 420px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Movie API E2E</h1>
+    <p class="sub">NestJS <code>/v1/movie</code> 엔드포인트를 브라우저에서 호출합니다. 서버는 <code>pnpm start:dev</code>로 실행하세요.</p>
+
+    <section>
+      <h2>연결 설정</h2>
+      <label for="baseUrl">API Base URL</label>
+      <input id="baseUrl" type="text" value="" placeholder="http://localhost:3001" />
+      <label for="token">Bearer Token (선택, like/생성 등)</label>
+      <input id="token" type="password" placeholder="로그인 후 access token" />
+    </section>
+
+    <section>
+      <h2>Movie 조회</h2>
+      <div class="row">
+        <div>
+          <label for="title">목록 title 필터</label>
+          <input id="title" type="text" placeholder="movie 1" />
+        </div>
+        <div>
+          <label for="take">take</label>
+          <input id="take" type="number" value="5" min="1" max="50" />
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label for="movieId">영화 ID (단건)</label>
+          <input id="movieId" type="number" value="1" min="1" />
+        </div>
+      </div>
+      <div class="actions">
+        <button type="button" data-action="list">GET 목록</button>
+        <button type="button" data-action="recent">GET recent</button>
+        <button type="button" data-action="one">GET 단건</button>
+        <button type="button" class="secondary" data-action="clear">결과 지우기</button>
+      </div>
+    </section>
+
+    <section>
+      <h2>응답</h2>
+      <div id="status"></div>
+      <pre id="output">요청을 선택하세요.</pre>
+    </section>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const statusEl = $('status');
+    const outputEl = $('output');
+
+    function apiBase() {
+      const raw = $('baseUrl').value.trim() || window.location.origin;
+      return raw.replace(/\/$/, '');
+    }
+
+    function headers() {
+      const h = { Accept: 'application/json' };
+      const token = $('token').value.trim();
+      if (token) h.Authorization = 'Bearer ' + token;
+      return h;
+    }
+
+    function setStatus(text, type) {
+      statusEl.textContent = text;
+      statusEl.className = type || '';
+    }
+
+    function show(data) {
+      outputEl.textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+    }
+
+    async function request(method, path) {
+      const url = apiBase() + path;
+      setStatus(method + ' ' + path + ' …', '');
+      const started = performance.now();
+      try {
+        const res = await fetch(url, { method, headers: headers() });
+        const text = await res.text();
+        let body;
+        try { body = text ? JSON.parse(text) : null; } catch { body = text; }
+        const ms = Math.round(performance.now() - started);
+        if (!res.ok) {
+          setStatus(res.status + ' ' + res.statusText + ' (' + ms + 'ms)', 'err');
+          show(body);
+          return;
+        }
+        setStatus(res.status + ' OK (' + ms + 'ms)', 'ok');
+        show(body);
+      } catch (err) {
+        setStatus('네트워크 오류: ' + err.message, 'err');
+        show(String(err));
+      }
+    }
+
+    $('baseUrl').value = window.location.origin;
+
+    document.querySelectorAll('[data-action]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const action = btn.getAttribute('data-action');
+        if (action === 'clear') {
+          setStatus('', '');
+          show('요청을 선택하세요.');
+          return;
+        }
+        if (action === 'list') {
+          const params = new URLSearchParams();
+          const title = $('title').value.trim();
+          const take = $('take').value;
+          if (title) params.set('title', title);
+          if (take) params.set('take', take);
+          params.set('order', 'id_ASC');
+          const q = params.toString();
+          request('GET', '/v1/movie' + (q ? '?' + q : ''));
+          return;
+        }
+        if (action === 'recent') {
+          request('GET', '/v1/movie/recent');
+          return;
+        }
+        if (action === 'one') {
+          const id = $('movieId').value || '1';
+          request('GET', '/v1/movie/' + id);
+        }
+      });
+    });
+  </script>
+</body>
+</html>

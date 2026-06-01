@@ -15,12 +15,16 @@
         "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
         "test": "jest",
         "test:watch": "jest --watch",
-        "test:integration": "jest --testRegex='.*\\.integration\\.spec\\.ts$'",
-        "test:integration:watch": "jest --testRegex='.*\\.integration\\.spec\\.ts$' --watch",
+        "test:integration": "jest --testRegex='.*\\.integration\\.spec\\.ts$' --runInBand",
+        "test:integration:watch": "jest --testRegex='.*\\.integration\\.spec\\.ts$' --watch --runInBand",
         "db:test:create": "node scripts/create-test-database.js",
         "test:cov": "jest --coverage",
         "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
         "test:e2e": "jest --config ./test/jest-e2e.json",
+        "test:e2e:movie": "jest --config ./test/jest-e2e.json -- test/movie.e2e-spec.ts",
+        "test:e2e:common": "jest --config ./test/jest-e2e.json -- test/common.e2e-spec.ts",
+        "test:e2e:auth": "jest --config ./test/jest-e2e.json -- test/auth.e2e-spec.ts",
+        "test:common": "jest --testPathPatterns=src/common --coverage --collectCoverageFrom=src/common/**/*.ts",
         "test:user": "jest --testPathPatterns=src/user --coverage --collectCoverageFrom=src/user/**/*.ts",
         "test:auth": "jest --testPathPatterns=src/auth --coverage --collectCoverageFrom=src/auth/**/*.ts",
         "test:director": "jest --testPathPatterns=src/director --coverage --collectCoverageFrom=src/director/**/*.ts",
@@ -115,7 +119,8 @@
         ],
         "coverageDirectory": "./coverage",
         "moduleNameMapper": {
-            "src/(.*)": "<rootDir>/src/$1"
+            "src/(.*)": "<rootDir>/src/$1",
+            "^uuid$": "<rootDir>/test/uuid.mock.ts"
         },
         "testEnvironment": "node"
     }
