@@ -7,8 +7,9 @@ jest.mock('fs/promises', () => ({
     rename: jest.fn(),
 }));
 
-jest.mock('uuid', () => ({
-    v4: () => 'test-uuid',
+jest.mock('crypto', () => ({
+    ...jest.requireActual<typeof import('crypto')>('crypto'),
+    randomUUID: jest.fn(() => 'test-uuid'),
 }));
 
 describe('MovieFilesPipe', () => {

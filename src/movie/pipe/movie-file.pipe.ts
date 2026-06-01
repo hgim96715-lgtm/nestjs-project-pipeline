@@ -1,5 +1,5 @@
 import { ArgumentMetadata, BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
-import { v4 } from 'uuid';
+import { randomUUID } from 'crypto';
 import { rename } from 'fs/promises';
 import { join } from 'path';
 @Injectable()
@@ -37,7 +37,7 @@ export class MovieFilePipe implements PipeTransform<Express.Multer.File, Promise
             extension = split[split.length - 1];
         }
         //uuid_Date.mp4
-        const filename = `${v4()}_${Date.now()}.${extension}`;
+        const filename = `${randomUUID()}_${Date.now()}.${extension}`;
 
         const newPath = join(value.destination, filename);
 

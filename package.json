@@ -60,7 +60,6 @@
         "reflect-metadata": "^0.2.2",
         "rxjs": "^7.8.1",
         "typeorm": "^1.0.0",
-        "uuid": "^14.0.0",
         "winston": "^3.19.0"
     },
     "devDependencies": {
@@ -119,8 +118,7 @@
         ],
         "coverageDirectory": "./coverage",
         "moduleNameMapper": {
-            "src/(.*)": "<rootDir>/src/$1",
-            "^uuid$": "<rootDir>/test/uuid.mock.ts"
+            "src/(.*)": "<rootDir>/src/$1"
         },
         "testEnvironment": "node"
     }

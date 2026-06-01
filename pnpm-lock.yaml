@@ -89,9 +89,6 @@ importers:
       typeorm:
         specifier: ^1.0.0
         version: 1.0.0(pg@8.21.0)(ts-node@10.9.2(@types/node@24.12.4)(typescript@5.9.3))
-      uuid:
-        specifier: ^14.0.0
-        version: 14.0.0
       winston:
         specifier: ^3.19.0
         version: 3.19.0
@@ -3531,10 +3528,6 @@ packages:
   utils-merge@1.0.1:
     resolution: {integrity: sha512-pMZTvIkT1d+TFGvDOqodOclx0QWkkgi6Tdoa8gC8ffGAAqz9pzPTZWAybbsHHoED/ztMtkv/VoYTYyShUn81hA==}
     engines: {node: '>= 0.4.0'}
-
-  uuid@14.0.0:
-    resolution: {integrity: sha512-Qo+uWgilfSmAhXCMav1uYFynlQO7fMFiMVZsQqZRMIXp0O7rR7qjkj+cPvBHLgBqi960QCoo/PH2/6ZtVqKvrg==}
-    hasBin: true
 
   v8-compile-cache-lib@3.0.1:
     resolution: {integrity: sha512-wa7YjyUGfNZngI/vtK0UHAN+lgDCxBPCylVXGp0zu59Fz5aiGtNXaq3DhIov063MorB+VfufLh3JlF2KdTK3xg==}
@@ -7309,8 +7302,6 @@ snapshots:
   util-deprecate@1.0.2: {}
 
   utils-merge@1.0.1: {}
-
-  uuid@14.0.0: {}
 
   v8-compile-cache-lib@3.0.1: {}
 

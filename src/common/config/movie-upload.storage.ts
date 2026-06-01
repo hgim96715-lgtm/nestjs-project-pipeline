@@ -1,6 +1,6 @@
+import { randomUUID } from 'crypto';
 import { diskStorage } from 'multer';
 import { join } from 'path';
-import { v4 } from 'uuid';
 
 export const movieUploadStorage = diskStorage({
     destination: join(process.cwd(), 'public', 'temp'),
@@ -12,6 +12,6 @@ export const movieUploadStorage = diskStorage({
             extension = split[split.length - 1];
         }
 
-        callback(null, `${v4()}_${Date.now()}.${extension}`);
+        callback(null, `${randomUUID()}_${Date.now()}.${extension}`);
     },
 });
