@@ -27,6 +27,7 @@ import { minutes, Throttle, ThrottlerGuard, ThrottlerModule } from '@nestjs/thro
 import { ScheduleModule } from '@nestjs/schedule';
 import { WinstonModule } from 'nest-winston';
 import * as winston from 'winston';
+import { AwsModule } from './aws/aws.module';
 
 @Module({
     imports: [
@@ -44,6 +45,8 @@ import * as winston from 'winston';
                 SALT_ROUNDS: Joi.number().required(),
                 ACCESS_TOKEN_SECRET: Joi.string().required(),
                 REFRESH_TOKEN_SECRET: Joi.string().required(),
+                AWS_REGION: Joi.string().required(),
+                AWS_S3_BUCKET: Joi.string().required(),
             }),
         }),
         TypeOrmModule.forRootAsync({
@@ -56,10 +59,14 @@ import * as winston from 'winston';
                 database: configService.get<string>(envVariableKeys.dbDatabase),
                 //
                 autoLoadEntities: true,
-                synchronize: true,
-                ssl: {
-                    rejectUnauthorized: false,
-                },
+                synchronize: configService.get<string>(envVariableKeys.env) === 'prod' ? false : true,
+                ...(configService.get<string>(envVariableKeys.env) === 'prod'
+                    ? {
+                          ssl: {
+                              rejectUnauthorized: false,
+                          },
+                      }
+                    : {}),
             }),
             inject: [ConfigService],
         }),
@@ -108,6 +115,7 @@ import * as winston from 'winston';
                 }),
             ],
         }),
+        AwsModule,
     ],
     controllers: [CommonController],
     providers: [
