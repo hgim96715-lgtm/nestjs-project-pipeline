@@ -8,6 +8,8 @@ const dbDatabase = 'DB_DATABASE';
 const saltrounds = 'SALT_ROUNDS';
 const accessTokenSecret = 'ACCESS_TOKEN_SECRET';
 const refreshTokenSecret = 'REFRESH_TOKEN_SECRET';
+const awsRegion = 'AWS_REGION';
+const awsS3Bucket = 'AWS_S3_BUCKET';
 
 export const envVariableKeys = {
     env,
@@ -20,4 +22,6 @@ export const envVariableKeys = {
     saltrounds,
     accessTokenSecret,
     refreshTokenSecret,
+    awsRegion,
+    awsS3Bucket,
 };
