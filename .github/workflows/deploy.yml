@@ -1,0 +1,55 @@
+name: Deploy to AWS Elastic Beanstalk
+
+on:
+    push:
+        branches:
+            - main
+
+jobs:
+    build-and-deploy:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v6
+
+            - name: Set up Node.js
+              uses: actions/setup-node@v6
+              with:
+                  node-version: '22'
+
+            - name: Install dependencies
+              run: npm i
+
+            - name: Build Project
+              run: npm run build
+
+            - name: Zip Artifact For Deplyment
+              run: zip -r deployment.zip .
+
+            - name: Upload To S3
+              env:
+                  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+                  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+                  AWS_REGION: ${{ secrets.AWS_REGION }}
+                  AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
+                  S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
+              run: |
+                  aws s3 cp deployment.zip "s3://${S3_BUCKET}/deployment.zip"
+
+            - name: Deploy to AWS Elastic Beanstalk
+              env:
+                  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+                  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+                  AWS_REGION: ${{ secrets.AWS_REGION }}
+                  AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
+                  S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
+              run: |
+                  aws elasticbeanstalk create-application-version \
+                    --application-name NestJS-Project-EB \
+                    --version-label "$GITHUB_SHA" \
+                    --source-bundle "S3Bucket=${S3_BUCKET},S3Key=deployment.zip"
+
+                  aws elasticbeanstalk update-environment \
+                    --application-name NestJS-Project-EB \
+                    --environment-name NestJS-Project-EB-env \
+                    --version-label "$GITHUB_SHA"
