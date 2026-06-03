@@ -61,3 +61,6 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 /public
 !/public/movie/
 !/public/movie/index.html
+
+# TypeScript build info
+*.tsbuildinfo

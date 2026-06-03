@@ -59,11 +59,8 @@ jobs:
             - name: Build Project
               run: npm run build
 
-            - name: Install TypeORM
-              run: npm install -g typeorm
-
             - name: Run Migration
-              run: npm run typeorm migration:run -d ./dist/database/data-source.js
+              run: npm run migration:run
 
             - name: Zip Artifact For Deplyment
               run: zip -r deployment.zip .
