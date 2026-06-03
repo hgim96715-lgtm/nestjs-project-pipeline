@@ -3,6 +3,8 @@ import { DataSource } from 'typeorm';
 
 dotenv.config();
 
+const isProd = process.env.ENV === 'prod';
+
 export default new DataSource({
     type: process.env.DB_TYPE as 'postgres',
     host: process.env.DB_HOST,
@@ -14,4 +16,5 @@ export default new DataSource({
     entities: [__dirname + '/../**/*.entity{.ts,.js}'],
     synchronize: false,
     migrations: [__dirname + '/../database/migrations/*.{ts,js}'],
+    ...(isProd ? { ssl: { rejectUnauthorized: false } } : {}),
 });
