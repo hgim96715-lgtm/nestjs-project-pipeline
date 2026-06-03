@@ -8,6 +8,23 @@ on:
 jobs:
     build-and-deploy:
         runs-on: ubuntu-latest
+
+        services:
+            postgres:
+                image: postgres:16-alpine
+
+                env:
+                    POSTGRES_USER: ${{ secrets.DB_USERNAME }}
+                    POSTGRES_PASSWORD: ${{ secrets.DB_PASSWORD }}
+                    POSTGRES_DB: ${{ secrets.DB_DATABASE }}
+                options: >-
+                    --health-cmd pg_isready
+                    --health-interval 10s
+                    --health-timeout 5s
+                    --health-retries 5
+                ports:
+                    - 5432:5432
+
         steps:
             - name: Checkout code
               uses: actions/checkout@v6
@@ -17,11 +34,45 @@ jobs:
               with:
                   node-version: '22'
 
+            - name: Create Env File
+              env:
+                  ENV: ${{ secrets.ENV }}
+                  DB_TYPE: ${{ secrets.DB_TYPE }}
+                  DB_HOST: ${{ secrets.DB_HOST }}
+                  DB_PORT: ${{ secrets.DB_PORT }}
+                  DB_USERNAME: ${{ secrets.DB_USERNAME }}
+                  DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+                  DB_DATABASE: ${{ secrets.DB_DATABASE }}
+                  SALT_ROUNDS: ${{ secrets.SALT_ROUNDS }}
+                  ACCESS_TOKEN_SECRET: ${{ secrets.ACCESS_TOKEN_SECRET }}
+                  REFRESH_TOKEN_SECRET: ${{ secrets.REFRESH_TOKEN_SECRET }}
+              run: env | grep -E '^(ENV|DB_|SALT_|ACCESS_|REFRESH_)=' > .env
+
+            - name: Create Folders
+              run: |
+                  mkdir -p ./public/movie
+                  mkdir -p ./public/temp
+
+            - name: Upgrade npm (to reduce deprecation warnings)
+              run: npm install -g npm@latest
+
+            - name: Audit and update vulnerable npm packages
+              run: |
+                  npm install -g npm-check-updates
+                  ncu -u || true
+                  npm install
+
             - name: Install dependencies
-              run: npm i
+              run: npm ci --legacy-peer-deps
 
             - name: Build Project
               run: npm run build
+
+            - name: Install TypeORM
+              run: npm install -g typeorm
+
+            - name: Run Migration
+              run: npm run typeorm migration:run -d ./dist/database/data-source.js
 
             - name: Zip Artifact For Deplyment
               run: zip -r deployment.zip .
