@@ -53,17 +53,8 @@ jobs:
                   mkdir -p ./public/movie
                   mkdir -p ./public/temp
 
-            - name: Upgrade npm (to reduce deprecation warnings)
-              run: npm install -g npm@latest
-
-            - name: Audit and update vulnerable npm packages
-              run: |
-                  npm install -g npm-check-updates
-                  ncu -u || true
-                  npm install
-
             - name: Install dependencies
-              run: npm ci --legacy-peer-deps
+              run: npm install --legacy-peer-deps
 
             - name: Build Project
               run: npm run build
