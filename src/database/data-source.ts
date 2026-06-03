@@ -3,7 +3,8 @@ import { DataSource } from 'typeorm';
 
 dotenv.config();
 
-const isProd = process.env.ENV === 'prod';
+const dbHost = process.env.DB_HOST ?? '';
+const isLocalDb = ['localhost', '127.0.0.1', 'postgres'].includes(dbHost);
 
 export default new DataSource({
     type: process.env.DB_TYPE as 'postgres',
@@ -16,5 +17,11 @@ export default new DataSource({
     entities: [__dirname + '/../**/*.entity{.ts,.js}'],
     synchronize: false,
     migrations: [__dirname + '/../database/migrations/*.{ts,js}'],
-    ...(isProd ? { ssl: { rejectUnauthorized: false } } : {}),
+    ...(!isLocalDb
+        ? {
+              ssl: {
+                  rejectUnauthorized: false,
+              },
+          }
+        : {}),
 });
