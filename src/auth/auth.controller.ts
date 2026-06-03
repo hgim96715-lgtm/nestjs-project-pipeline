@@ -21,7 +21,6 @@ import { ApiBasicAuth, ApiBearerAuth } from '@nestjs/swagger';
 import { Authorization } from './decorator/authorization.decorator';
 
 @Controller('auth')
-@ApiBearerAuth()
 @UseInterceptors(ClassSerializerInterceptor)
 export class AuthController {
     constructor(private readonly authService: AuthService) {}
@@ -50,6 +49,7 @@ export class AuthController {
 
     // @Public()
     @UseGuards(LocalAuthGuard)
+    @ApiBasicAuth()
     @Post('login/passport')
     async loginUserPassport(@Request() req) {
         return {
@@ -59,12 +59,14 @@ export class AuthController {
     }
 
     @UseGuards(JwtAuthGuard)
+    @ApiBearerAuth()
     @Get('private')
     async private(@Request() req) {
         return req.user;
     }
 
     @Public()
+    @ApiBearerAuth()
     @Post('token/access')
     async rotateAccessToken(@Request() req) {
         const payload = await this.authService.parseBearerToken(req.headers.authorization, true);
