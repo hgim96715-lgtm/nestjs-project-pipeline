@@ -20,7 +20,6 @@ import { ForbiddenExceptionFilter } from './common/filter/forbidden.filter';
 import { QueryFailedException } from './common/filter/query-failed.filter';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
-import { CommonController } from './common/common.controller';
 
 import { CacheModule } from '@nestjs/cache-manager';
 import { createKeyv } from '@keyv/redis';
@@ -130,7 +129,6 @@ import { ChatModule } from './chat/chat.module';
         AwsModule,
         ChatModule,
     ],
-    controllers: [CommonController],
     providers: [
         {
             provide: APP_GUARD,
