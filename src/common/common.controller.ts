@@ -31,10 +31,20 @@ export class CommonController {
         )
         movies: Express.Multer.File[],
     ) {
-        await this.thumbnailQueue.add('thumbnail', {
-            videoId: movies.map((movie) => movie.filename),
-            videoPath: movies.map((movie) => movie.path),
-        });
+        await this.thumbnailQueue.add(
+            'thumbnail',
+            {
+                videoId: movies.map((movie) => movie.filename),
+                videoPath: movies.map((movie) => movie.path),
+            },
+            {
+                priority: 1,
+                delay: 100,
+                attempts: 3,
+                removeOnComplete: true,
+                removeOnFail: true,
+            },
+        );
         return movies.map((movie) => ({
             fileName: movie.filename,
         }));
