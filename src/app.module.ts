@@ -28,6 +28,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { WinstonModule } from 'nest-winston';
 import * as winston from 'winston';
 import { AwsModule } from './aws/aws.module';
+import { ChatModule } from './chat/chat.module';
 
 @Module({
     imports: [
@@ -116,6 +117,7 @@ import { AwsModule } from './aws/aws.module';
             ],
         }),
         AwsModule,
+        ChatModule,
     ],
     controllers: [CommonController],
     providers: [
