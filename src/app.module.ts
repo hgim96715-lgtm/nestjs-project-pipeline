@@ -23,6 +23,7 @@ import { join } from 'path';
 import { CommonController } from './common/common.controller';
 
 import { CacheModule } from '@nestjs/cache-manager';
+import { createKeyv } from '@keyv/redis';
 import { minutes, Throttle, ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
 import { WinstonModule } from 'nest-winston';
@@ -48,6 +49,9 @@ import { ChatModule } from './chat/chat.module';
                 REFRESH_TOKEN_SECRET: Joi.string().required(),
                 AWS_REGION: Joi.string().required(),
                 AWS_S3_BUCKET: Joi.string().required(),
+                REDIS_HOST: Joi.string().required(),
+                REDIS_PORT: Joi.number().required(),
+                REDIS_INSIGHT_PORT: Joi.number().required(),
             }),
         }),
         TypeOrmModule.forRootAsync({
@@ -80,10 +84,17 @@ import { ChatModule } from './chat/chat.module';
             rootPath: join(process.cwd(), 'public'),
             serveRoot: '/public',
         }),
-        CacheModule.register({
-            ttl: 0,
-            max: 10,
+        CacheModule.registerAsync({
             isGlobal: true,
+            imports: [ConfigModule],
+            inject: [ConfigService],
+            useFactory: (configService: ConfigService) => {
+                const host = configService.getOrThrow<string>(envVariableKeys.redisHost);
+                const port = configService.getOrThrow<number>(envVariableKeys.redisPort);
+                return {
+                    stores: [createKeyv(`redis://${host}:${port}`)],
+                };
+            },
         }),
         ThrottlerModule.forRoot({
             throttlers: [

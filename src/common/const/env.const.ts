@@ -10,6 +10,9 @@ const accessTokenSecret = 'ACCESS_TOKEN_SECRET';
 const refreshTokenSecret = 'REFRESH_TOKEN_SECRET';
 const awsRegion = 'AWS_REGION';
 const awsS3Bucket = 'AWS_S3_BUCKET';
+const redisHost = 'REDIS_HOST';
+const redisPort = 'REDIS_PORT';
+const redisInsightPort = 'REDIS_INSIGHT_PORT';
 
 export const envVariableKeys = {
     env,
@@ -24,4 +27,7 @@ export const envVariableKeys = {
     refreshTokenSecret,
     awsRegion,
     awsS3Bucket,
+    redisHost,
+    redisPort,
+    redisInsightPort,
 };
