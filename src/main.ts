@@ -4,6 +4,13 @@ import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
+import * as ffmpeg from 'fluent-ffmpeg';
+import * as ffmpegInstaller from '@ffmpeg-installer/ffmpeg';
+import * as ffprobeStatic from 'ffprobe-static';
+
+ffmpeg.setFfmpegPath(ffmpegInstaller.path);
+ffmpeg.setFfprobePath(ffprobeStatic.path);
+
 async function bootstrap() {
     const app = await NestFactory.create(AppModule);
     app.useLogger(app.get(WINSTON_MODULE_NEST_PROVIDER));
