@@ -140,7 +140,7 @@ export class AuthService {
             },
             {
                 secret: isRfreshToken ? refreshTokenSecret : accessTokenSecret,
-                expiresIn: isRfreshToken ? '24h' : 300,
+                expiresIn: isRfreshToken ? '24h' : '1080h',
             },
         );
     }
