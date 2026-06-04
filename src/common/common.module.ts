@@ -6,6 +6,8 @@ import { movieUploadStorage } from './config/movie-upload.storage';
 import { TasksService } from './tasks.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Movie } from 'src/movie/entity/movie.entity';
+import { BullModule } from '@nestjs/bullmq';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 
 @Module({
     imports: [
@@ -13,6 +15,20 @@ import { Movie } from 'src/movie/entity/movie.entity';
             storage: movieUploadStorage,
         }),
         TypeOrmModule.forFeature([Movie]),
+
+        BullModule.forRootAsync({
+            imports: [ConfigModule],
+            inject: [ConfigService],
+            useFactory: (config: ConfigService) => ({
+                connection: {
+                    host: config.getOrThrow('REDIS_HOST'),
+                    port: config.getOrThrow('REDIS_PORT'),
+                },
+            }),
+        }),
+        BullModule.registerQueue({
+            name: 'thumbnail-generation',
+        }),
     ],
     providers: [CommonService, TasksService],
     exports: [CommonService],
