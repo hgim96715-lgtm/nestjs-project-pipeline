@@ -68,6 +68,5 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 # pnpm local store
 .pnpm-store/
 .pnpm-workspace/
-/generated/prisma
-
-src/generated/*
+/generated/
+/src/generated/
