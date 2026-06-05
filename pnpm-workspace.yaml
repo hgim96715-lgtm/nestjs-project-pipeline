@@ -2,9 +2,11 @@ allowBuilds:
   '@automock/adapters.nestjs': false
   '@ffmpeg-installer/darwin-arm64': false
   '@nestjs/core': false
+  '@prisma/engines': true
   '@scarf/scarf': false
   '@suites/di.nestjs': false
   '@suites/doubles.jest': false
   bcrypt: false
   msgpackr-extract: false
+  prisma: true
   unrs-resolver: set this to true or false
