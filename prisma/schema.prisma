@@ -1,10 +1,17 @@
 generator client {
-    provider = "prisma-client"
-    output   = "../generated/prisma"
+    provider     = "prisma-client"
+    output       = "../generated/prisma/prisma"
+    moduleFormat = "cjs"
 }
 
 datasource db {
     provider = "postgresql"
+}
+
+enum Role {
+    admin
+    paidUser
+    user
 }
 
 model chat {
@@ -142,7 +149,7 @@ model user {
     id                   Int                    @id(map: "PK_cace4a159ff9f2512dd42373760") @default(autoincrement())
     email                String                 @unique(map: "UQ_e12875dfb3b1d92d7d7c5377e22") @db.VarChar
     password             String                 @db.VarChar
-    role                 Int                    @default(2)
+    role                 Role                   @default(user)
     chat                 chat[]
     chat_room_user_user  chat_room_user_user[]
     chat_room_users_user chat_room_users_user[]
