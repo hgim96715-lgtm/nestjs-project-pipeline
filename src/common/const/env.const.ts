@@ -14,6 +14,7 @@ const redisHost = 'REDIS_HOST';
 const redisPort = 'REDIS_PORT';
 const redisInsightPort = 'REDIS_INSIGHT_PORT';
 const sessionSecret = 'SESSION_SECRET';
+const databaseUrl = 'DATABASE_URL';
 
 export const envVariableKeys = {
     env,
@@ -32,4 +33,5 @@ export const envVariableKeys = {
     redisPort,
     redisInsightPort,
     sessionSecret,
+    databaseUrl,
 };

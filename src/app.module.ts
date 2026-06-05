@@ -53,17 +53,13 @@ import { WorkerModule } from './worker/worker.module';
                 REDIS_PORT: Joi.number().required(),
                 REDIS_INSIGHT_PORT: Joi.number().required(),
                 SESSION_SECRET: Joi.string().required(),
+                DATABASE_URL: Joi.string().required(),
             }),
         }),
         TypeOrmModule.forRootAsync({
             useFactory: (configService: ConfigService) => ({
+                url: configService.get<string>(envVariableKeys.databaseUrl),
                 type: configService.get<string>(envVariableKeys.dbType) as 'postgres',
-                host: configService.get<string>(envVariableKeys.dbHost),
-                port: configService.get<number>(envVariableKeys.dbPort),
-                username: configService.get<string>(envVariableKeys.dbUsername),
-                password: configService.get<string>(envVariableKeys.dbPassword),
-                database: configService.get<string>(envVariableKeys.dbDatabase),
-                //
                 autoLoadEntities: true,
                 synchronize: configService.get<string>(envVariableKeys.env) === 'prod' ? false : true,
                 ...(configService.get<string>(envVariableKeys.env) === 'prod'
