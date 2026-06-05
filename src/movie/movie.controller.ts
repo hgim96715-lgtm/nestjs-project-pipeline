@@ -11,6 +11,7 @@ import {
     Query,
     UseInterceptors,
     Version,
+    Req,
 } from '@nestjs/common';
 import { MovieService } from './movie.service';
 import { CreateMovieDto } from './dto/create-movie.dto';
@@ -44,7 +45,14 @@ export class MovieController {
 
     @Public()
     @Get(':id')
-    findOne(@Param('id', ParseIntPipe) id: number) {
+    findOne(@Param('id', ParseIntPipe) id: number, @Req() request: any) {
+        const session = request.session;
+        const movieCount = session.movieCount ?? {};
+        request.session.movieCount = {
+            ...movieCount,
+            [id]: movieCount[id] ? movieCount[id] + 1 : 1,
+        };
+        console.log(request.session.movieCount);
         return this.movieService.findOne(id);
     }
 
