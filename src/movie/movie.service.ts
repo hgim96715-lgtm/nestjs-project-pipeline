@@ -6,36 +6,21 @@ import {
     NotFoundException,
     UnauthorizedException,
 } from '@nestjs/common';
-import { mkdir, rename, stat, unlink } from 'fs/promises';
+import { mkdir, rename, stat } from 'fs/promises';
 import { CreateMovieDto } from './dto/create-movie.dto';
 import { UpdateMovieDto } from './dto/update-movie.dto';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Movie } from './entity/movie.entity';
-import { Repository, DataSource, In } from 'typeorm';
-import { MovieDetail } from './entity/movie-detail.entity';
-import { MovieFile } from './entity/movie-file.entity';
-import { Genre } from 'src/genre/entity/genre.entity';
-import { Director } from 'src/director/entity/director.entity';
 import { GetMoviesDto } from './dto/get-movies.dto';
 import { CommonService } from 'src/common/common.service';
-import { QueryRunner } from 'typeorm/browser';
 import { basename, isAbsolute, join, relative } from 'path';
-import { MovieUserLike } from './entity/movie-user-like.entity';
-import { User } from 'src/user/entity/user.entity';
 import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
 import { normalizeTempRefs } from './utils/normalize-temp-refs';
+import { PrismaService } from 'src/common/prisma.service';
+import { Prisma } from '../../generated/prisma/prisma/client';
 
 @Injectable()
 export class MovieService {
     constructor(
-        @InjectRepository(Movie) private readonly movieRepository: Repository<Movie>,
-        @InjectRepository(MovieDetail) private readonly movieDetailRepository: Repository<MovieDetail>,
-        @InjectRepository(MovieFile) private readonly movieFileRepository: Repository<MovieFile>,
-        @InjectRepository(Genre) private readonly genreRepository: Repository<Genre>,
-        @InjectRepository(Director) private readonly directorRepository: Repository<Director>,
-        @InjectRepository(MovieUserLike) private readonly movieUserLikeRepository: Repository<MovieUserLike>,
-        @InjectRepository(User) private readonly userRepository: Repository<User>,
-        private readonly dataSource: DataSource,
+        private readonly prisma: PrismaService,
         private readonly commonService: CommonService,
         @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
     ) {}
@@ -58,8 +43,8 @@ export class MovieService {
             return cacheData;
         }
 
-        const data = await this.movieRepository.find({
-            order: { createAt: 'DESC' },
+        const data = await this.prisma.movie.findMany({
+            orderBy: { createAt: 'desc' },
             take: 10,
         });
 
@@ -68,50 +53,61 @@ export class MovieService {
     }
 
     async findAll(dto: GetMoviesDto, userId?: number) {
-        // const { title,page,take } = dto
-
         const { title } = dto;
+        const { cursorWhere, orderBy, take, order } = this.commonService.parseCursorPagination(dto);
 
-        const qb = this.movieRepository
-            .createQueryBuilder('movie')
-            .distinct(true)
-            .leftJoinAndSelect('movie.director', 'director')
-            .leftJoinAndSelect('movie.genres', 'genres')
-            .leftJoinAndSelect('movie.files', 'files');
+        const titleWhere: Prisma.movieWhereInput = title ? { title: { contains: title } } : {};
+        const where: Prisma.movieWhereInput = cursorWhere
+            ? {
+                  AND: [titleWhere, cursorWhere],
+              }
+            : titleWhere;
 
-        if (title) {
-            qb.where('movie.title LIKE :title', { title: `%${title}%` });
-        }
+        const include = {
+            movie_genres_genre: { include: { genre: true } },
+            director: true,
+            movie_file: true,
+        } as const;
 
-        // this.commonService.applyPagePaginationParamsToQb(qb,dto)
-        const { nextCursor } = await this.commonService.applyCursorPaginationParamsToQb(qb, dto);
+        const movies = await this.prisma.movie.findMany({
+            where,
+            orderBy,
+            take,
+            include,
+        });
+        const count = await this.prisma.movie.count({ where: titleWhere });
 
-        let [data, count] = await qb.getManyAndCount();
+        const nextCursor = this.commonService.generateNextCursor(movies, order);
 
+        let likeMovieMap: Record<number, boolean> = {};
         if (userId) {
-            const movieIds = data.map((movie) => movie.id);
-
+            const movieIds = movies.map((movie) => movie.id);
             const likedMovies =
                 movieIds.length === 0
                     ? []
-                    : await this.movieUserLikeRepository
-                          .createQueryBuilder('mul')
-                          .leftJoinAndSelect('mul.movie', 'movie')
-                          .leftJoinAndSelect('mul.user', 'user')
-                          .where('movie.id IN (:...movieIds)', { movieIds })
-                          .andWhere('user.id=:userId', { userId })
-                          .getMany();
+                    : await this.prisma.movie_user_like.findMany({
+                          where: {
+                              movieId: { in: movieIds },
+                              userId,
+                          },
+                      });
 
-            const likeMovieMap = likedMovies.reduce<Record<number, boolean>>((acc, next) => {
-                acc[next.movie.id] = next.isLike;
+            likeMovieMap = likedMovies.reduce<Record<number, boolean>>((acc, next) => {
+                acc[next.movieId] = next.isLike;
                 return acc;
             }, {});
+        }
 
-            data = data.map((movie) => ({
+        const data = movies.map((movie) => {
+            if (!userId) {
+                return movie;
+            }
+
+            return {
                 ...movie,
                 likeStatus: movie.id in likeMovieMap ? likeMovieMap[movie.id] : null,
-            }));
-        }
+            };
+        });
 
         return {
             data,
@@ -121,14 +117,23 @@ export class MovieService {
     }
 
     async findOne(id: number) {
-        const movie = await this.movieRepository
-            .createQueryBuilder('movie')
-            .leftJoinAndSelect('movie.director', 'director')
-            .leftJoinAndSelect('movie.genres', 'genres')
-            .leftJoinAndSelect('movie.detail', 'detail')
-            .leftJoinAndSelect('movie.files', 'files')
-            .where('movie.id=:id', { id })
-            .getOne();
+        const movie = await this.prisma.movie.findUnique({
+            where: { id },
+            include: {
+                movie_detail: true,
+                director: true,
+                movie_genres_genre: { include: { genre: true } },
+                movie_file: true,
+            },
+        });
+        // const movie = await this.movieRepository
+        //     .createQueryBuilder('movie')
+        //     .leftJoinAndSelect('movie.director', 'director')
+        //     .leftJoinAndSelect('movie.genres', 'genres')
+        //     .leftJoinAndSelect('movie.detail', 'detail')
+        //     .leftJoinAndSelect('movie.files', 'files')
+        //     .where('movie.id=:id', { id })
+        //     .getOne();
 
         if (!movie) {
             throw new NotFoundException(`id가 ${id}인 영화는 존재하지 않습니다.`);
@@ -137,58 +142,52 @@ export class MovieService {
         return movie;
     }
 
-    async create(createMovieDto: CreateMovieDto, files: string[], qr: QueryRunner, userId: number) {
+    async create(createMovieDto: CreateMovieDto, files: string[], userId: number) {
         const refs = normalizeTempRefs(files);
 
-        try {
-            const titleExists = await qr.manager.exists(Movie, {
+        return this.prisma.$transaction(async (prisma) => {
+            const titleExists = await prisma.movie.findUnique({
                 where: { title: createMovieDto.title },
             });
             if (titleExists) {
                 throw new ConflictException('이미 존재하는 영화 제목입니다.');
             }
 
-            const director = await qr.manager.findOne(Director, { where: { id: createMovieDto.directorId } });
+            const director = await prisma.director.findUnique({
+                where: { id: createMovieDto.directorId },
+            });
             if (!director) {
                 throw new NotFoundException('존재하지 않는 감독의 ID입니다.');
             }
-            const genres = await qr.manager.find(Genre, { where: { id: In(createMovieDto.genreIds) } });
 
+            const genres = await prisma.genre.findMany({
+                where: { id: { in: createMovieDto.genreIds } },
+            });
             if (genres.length !== createMovieDto.genreIds.length) {
                 throw new NotFoundException(
                     `존재하지 않는 장르가 있습니다.존재하는 장르는 ${genres.map((genre) => genre.id).join(',')}`,
                 );
             }
 
-            const movieDetail = await qr.manager
-                .createQueryBuilder()
-                .insert()
-                .into(MovieDetail)
-                .values({ detail: createMovieDto.detail })
-                .execute();
+            const movieDetail = await prisma.movie_detail.create({
+                data: { detail: createMovieDto.detail },
+            });
 
-            const movieDetailId = movieDetail.identifiers[0].id;
-
-            const movie = await qr.manager
-                .createQueryBuilder()
-                .insert()
-                .into(Movie)
-                .values({
+            const movie = await prisma.movie.create({
+                data: {
                     title: createMovieDto.title,
-                    detail: { id: movieDetailId },
-                    director,
-                    genres,
-                    creator: { id: userId },
-                })
-                .execute();
+                    detailId: movieDetail.id,
+                    directorId: director.id,
+                    creatorId: userId,
+                },
+            });
 
-            const movieId = movie.identifiers[0].id;
-
-            await qr.manager
-                .createQueryBuilder()
-                .relation(Movie, 'genres')
-                .of(movieId)
-                .add(genres.map((genre) => genre.id));
+            await prisma.movie_genres_genre.createMany({
+                data: genres.map((genre) => ({
+                    movieId: movie.id,
+                    genreId: genre.id,
+                })),
+            });
 
             if (refs.length) {
                 const resolveSrcAbs = (ref: string) =>
@@ -199,23 +198,20 @@ export class MovieService {
                           : join(process.cwd(), 'public', 'temp', ref);
 
                 const scrAbsPaths = refs.map(resolveSrcAbs);
-
                 const srcStats = await Promise.all(scrAbsPaths.map((p) => stat(p).catch(() => null)));
-
                 const whoMissingRefs = refs.filter((_, i) => !srcStats[i]);
 
                 if (whoMissingRefs.length) {
                     throw new BadRequestException(`존재하지 않는 파일이 있습니다. -> ${whoMissingRefs.join(', ')}`);
                 }
 
-                const movieDir = join(process.cwd(), 'public', 'movie', String(movieId));
-
+                const movieDir = join(process.cwd(), 'public', 'movie', String(movie.id));
                 await mkdir(movieDir, { recursive: true });
 
                 const renamed: Array<{ srcAbs: string; destAbs: string }> = [];
 
                 try {
-                    const movieFiles = await Promise.all(
+                    await Promise.all(
                         refs.map(async (_, idx) => {
                             const srcAbs = scrAbsPaths[idx];
                             const st = srcStats[idx]!;
@@ -227,180 +223,226 @@ export class MovieService {
 
                             const publicPath = relative(process.cwd(), destAbs);
 
-                            return qr.manager.create(MovieFile, {
-                                path: publicPath,
-                                originalName: filename,
-                                mimetype: 'video/mp4',
-                                size: st!.size,
-                                movie: { id: movieId },
+                            await prisma.movie_file.create({
+                                data: {
+                                    path: publicPath,
+                                    originalName: filename,
+                                    mimetype: 'video/mp4',
+                                    size: st.size,
+                                    movieId: movie.id,
+                                },
                             });
                         }),
                     );
-                    await qr.manager.save(MovieFile, movieFiles);
                 } catch (err) {
-                    // filesystem 부분 실패 시 되돌리기 (DB 트랜잭션 롤백과 별개라서 방어)
                     await Promise.all(renamed.map((r) => rename(r.destAbs, r.srcAbs).catch(() => undefined)));
                     throw err;
                 }
             }
 
-            return await qr.manager.findOne(Movie, {
-                where: { id: movieId },
-                relations: { detail: true, director: true, genres: true, files: true },
+            return prisma.movie.findUnique({
+                where: { id: movie.id },
+                include: {
+                    movie_detail: true,
+                    director: true,
+                    movie_genres_genre: { include: { genre: true } },
+                    movie_file: true,
+                },
             });
-        } catch (error) {
-            throw error;
-        }
+        });
     }
 
     async update(id: number, updateMovieDto: UpdateMovieDto) {
-        const qr = this.dataSource.createQueryRunner();
-
-        await qr.connect();
-        await qr.startTransaction();
-
-        try {
-            const movie = await qr.manager.findOne(Movie, {
+        return this.prisma.$transaction(async (prisma) => {
+            const existingMovie = await prisma.movie.findUnique({
                 where: { id },
-                relations: { detail: true, genres: true },
+                include: { movie_genres_genre: true },
             });
-
-            if (!movie) {
-                throw new NotFoundException(`id가 ${id}인 영화는 존재하지 않습니다. `);
-            }
-            // MovieDetail, Director, Genre 관계 필드는 따로 처리
-            // Movie 테이블에 직접 수정할 일반 필드만 분리
-            const { detail, directorId, genreIds, ...movieRest } = updateMovieDto;
-
-            let newDirector;
-
-            if (directorId) {
-                const director = await qr.manager.findOne(Director, { where: { id: directorId } });
-                newDirector = director;
+            if (!existingMovie) {
+                throw new NotFoundException(`id가 ${id}인 영화는 존재하지 않습니다.`);
             }
 
-            let newGeres;
-            if (genreIds) {
-                const genres = await qr.manager.find(Genre, {
-                    where: { id: In(genreIds) },
+            const { detail, directorId, genreIds, files: _files, title } = updateMovieDto;
+
+            if (title !== undefined) {
+                const duplicateTitle = await prisma.movie.findFirst({
+                    where: {
+                        title,
+                        NOT: { id },
+                    },
                 });
-                if (genres.length !== updateMovieDto.genreIds?.length) {
-                    throw new NotFoundException(`존재하지 않는 장르가 있습니다.
-            존재하는 ids ->${genres.map((genre) => genre.id).join(',')}`);
+                if (duplicateTitle) {
+                    throw new ConflictException('이미 존재하는 영화 제목입니다.');
                 }
-                newGeres = genres;
+
+                await prisma.movie.update({
+                    where: { id },
+                    data: { title },
+                });
             }
 
-            // 전달된 Movie 필드와, 변경할 감독이 있을 경우에만 director를 수정 객체에 포함
-            const movieUpdateFields = {
-                ...movieRest,
-                ...(newDirector && { director: newDirector }),
-            };
+            if (directorId !== undefined) {
+                const director = await prisma.director.findUnique({
+                    where: { id: directorId },
+                });
+                if (!director) {
+                    throw new NotFoundException('존재하지 않는 감독의 ID입니다.');
+                }
 
-            await qr.manager
-                .createQueryBuilder()
-                .update(Movie)
-                .set(movieUpdateFields)
-                .where('id=:id', { id })
-                .execute();
-
-            if (detail) {
-                await qr.manager
-                    .createQueryBuilder()
-                    .update(MovieDetail)
-                    .set({ detail })
-                    .where('id=:id', { id: movie.detail.id })
-                    .execute();
+                await prisma.movie.update({
+                    where: { id },
+                    data: { directorId: director.id },
+                });
             }
 
-            if (newGeres) {
-                await qr.manager
-                    .createQueryBuilder()
-                    .relation(Movie, 'genres')
-                    .of(id)
-                    .addAndRemove(
-                        newGeres.map((genre) => genre.id),
-                        movie.genres.map((genre) => genre.id),
+            if (detail !== undefined) {
+                await prisma.movie_detail.update({
+                    where: { id: existingMovie.detailId },
+                    data: { detail },
+                });
+            }
+
+            if (genreIds !== undefined) {
+                const genres = await prisma.genre.findMany({
+                    where: { id: { in: genreIds } },
+                });
+                if (genres.length !== genreIds.length) {
+                    throw new NotFoundException(
+                        `존재하지 않는 장르가 있습니다.
+            존재하는 ids ->${genres.map((genre) => genre.id).join(',')}`,
                     );
+                }
+
+                const currentGenreIds = existingMovie.movie_genres_genre.map((row) => row.genreId);
+                const nextGenreIds = genres.map((genre) => genre.id);
+                const genreIdsToRemove = currentGenreIds.filter((genreId) => !nextGenreIds.includes(genreId));
+                const genreIdsToAdd = nextGenreIds.filter((genreId) => !currentGenreIds.includes(genreId));
+
+                if (genreIdsToRemove.length > 0) {
+                    await prisma.movie_genres_genre.deleteMany({
+                        where: {
+                            movieId: id,
+                            genreId: { in: genreIdsToRemove },
+                        },
+                    });
+                }
+
+                if (genreIdsToAdd.length > 0) {
+                    await prisma.movie_genres_genre.createMany({
+                        data: genreIdsToAdd.map((genreId) => ({
+                            movieId: id,
+                            genreId,
+                        })),
+                    });
+                }
             }
-            await qr.commitTransaction();
-            return this.movieRepository.findOne({
+
+            return prisma.movie.findUnique({
                 where: { id },
-                relations: { detail: true, director: true, genres: true, files: true },
+                include: {
+                    movie_detail: true,
+                    director: true,
+                    movie_genres_genre: { include: { genre: true } },
+                    movie_file: true,
+                },
             });
-        } catch (e) {
-            await qr.rollbackTransaction();
-            throw e;
-        } finally {
-            await qr.release();
-        }
+        });
     }
 
     async remove(id: number) {
-        const movie = await this.movieRepository.findOne({ where: { id }, relations: { detail: true } });
-
-        if (!movie) {
-            throw new NotFoundException(`${id}의 영화는 존재하지 않습니다.`);
-        }
-
-        // FK 때문에 MovieFile을 먼저 삭제하는 게 안전함.
-        await this.movieFileRepository.delete({ movie: { id } } as any);
-
-        await this.movieRepository.createQueryBuilder().delete().where('id=:id', { id }).execute();
-
-        await this.movieDetailRepository.delete(movie.detail.id);
-
-        return `${id}의 영화가 삭제되었습니다.`;
+        return this.prisma.$transaction(async (prisma) => {
+            const movie = await prisma.movie.findUnique({ where: { id }, include: { movie_detail: true } });
+            if (!movie) {
+                throw new NotFoundException(`${id}의 영화는 존재하지 않습니다.`);
+            }
+            await prisma.movie_file.deleteMany({ where: { movieId: id } });
+            await prisma.movie.delete({ where: { id } });
+            await prisma.movie_detail.delete({ where: { id: movie.detailId } });
+            return `${id}의 영화가 삭제되었습니다.`;
+        });
     }
 
     ///-----좋아요 관련 메서드-----(추가로직)------------------------------------///
 
     async toggleMovieLie(movieId: number, userId: number, isLike: boolean) {
-        const movie = await this.movieRepository.findOne({ where: { id: movieId } });
+        return this.prisma.$transaction(async (prisma) => {
+            const movie = await prisma.movie.findUnique({ where: { id: movieId } });
 
-        if (!movie) {
-            throw new NotFoundException(`${movieId}의 영화는 존재하지 않습니다.`);
-        }
-
-        const user = await this.userRepository.findOne({ where: { id: userId } });
-
-        if (!user) {
-            throw new UnauthorizedException('사용자 정보를 찾을 수 없습니다.');
-        }
-
-        const likeRecord = await this.movieUserLikeRepository
-            .createQueryBuilder('mul')
-            .leftJoinAndSelect('mul.movie', 'movie')
-            .leftJoinAndSelect('mul.user', 'user')
-            .where('movie.id=:movieId', { movieId })
-            .andWhere('user.id=:userId', { userId })
-            .getOne();
-
-        if (likeRecord) {
-            if (likeRecord.isLike === isLike) {
-                await this.movieUserLikeRepository.delete({
-                    movie,
-                    user,
-                });
-            } else {
-                await this.movieUserLikeRepository.update({ movie, user }, { isLike });
+            if (!movie) {
+                throw new NotFoundException(`${movieId}의 영화는 존재하지 않습니다.`);
             }
-        } else {
-            await this.movieUserLikeRepository.save({
-                movie,
-                user,
-                isLike,
+
+            const user = await prisma.user.findUnique({ where: { id: userId } });
+
+            if (!user) {
+                throw new UnauthorizedException('사용자 정보를 찾을 수 없습니다.');
+            }
+
+            const likeRecord = await prisma.movie_user_like.findUnique({
+                where: {
+                    movieId_userId: { movieId, userId },
+                },
             });
-        }
 
-        const result = await this.movieUserLikeRepository
-            .createQueryBuilder('mul')
-            .leftJoinAndSelect('mul.movie', 'movie')
-            .leftJoinAndSelect('mul.user', 'user')
-            .where('movie.id=:movieId', { movieId })
-            .andWhere('user.id=:userId', { userId })
-            .getOne();
+            let likeCountDelta = 0;
+            let dislikeCountDelta = 0;
 
-        return { isLike: result && result.isLike };
+            if (likeRecord) {
+                if (likeRecord.isLike === isLike) {
+                    await prisma.movie_user_like.delete({
+                        where: { movieId_userId: { movieId, userId } },
+                    });
+
+                    if (isLike) {
+                        likeCountDelta = -1;
+                    } else {
+                        dislikeCountDelta = -1;
+                    }
+                } else {
+                    await prisma.movie_user_like.update({
+                        where: { movieId_userId: { movieId, userId } },
+                        data: { isLike },
+                    });
+
+                    if (isLike) {
+                        likeCountDelta = 1;
+                        dislikeCountDelta = -1;
+                    } else {
+                        likeCountDelta = -1;
+                        dislikeCountDelta = 1;
+                    }
+                }
+            } else {
+                await prisma.movie_user_like.create({
+                    data: {
+                        movie: { connect: { id: movieId } },
+                        user: { connect: { id: userId } },
+                        isLike,
+                    },
+                });
+
+                if (isLike) {
+                    likeCountDelta = 1;
+                } else {
+                    dislikeCountDelta = 1;
+                }
+            }
+
+            if (likeCountDelta !== 0 || dislikeCountDelta !== 0) {
+                await prisma.movie.update({
+                    where: { id: movieId },
+                    data: {
+                        ...(likeCountDelta !== 0 && { likeCount: { increment: likeCountDelta } }),
+                        ...(dislikeCountDelta !== 0 && { dislikeCount: { increment: dislikeCountDelta } }),
+                    },
+                });
+            }
+
+            const result = await prisma.movie_user_like.findUnique({
+                where: { movieId_userId: { movieId, userId } },
+            });
+
+            return { isLike: result && result.isLike };
+        });
     }
 }

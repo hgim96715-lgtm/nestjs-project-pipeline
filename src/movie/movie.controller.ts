@@ -20,9 +20,7 @@ import { Public } from 'src/auth/decorator/public.decorator';
 import { RBAC } from 'src/auth/decorator/rbac.decorator';
 import { Role } from 'src/user/entity/user.entity';
 import { GetMoviesDto } from './dto/get-movies.dto';
-import { TransactionInterceptor } from 'src/common/interceptor/transaction.interceptor';
 import { UserId } from 'src/user/decorator/user-id.decorator';
-import { QueryRunner } from 'src/common/decorator/query-runner.decorator';
 import { CacheInterceptor, CacheKey, CacheTTL } from '@nestjs/cache-manager';
 import { ApiBearerAuth } from '@nestjs/swagger';
 
@@ -59,9 +57,8 @@ export class MovieController {
     @ApiBearerAuth()
     @RBAC(Role.admin)
     @Post()
-    @UseInterceptors(TransactionInterceptor)
-    create(@Body() createMovieDto: CreateMovieDto, @QueryRunner() queryRunner, @UserId() userId: number) {
-        return this.movieService.create(createMovieDto, createMovieDto.files ?? [], queryRunner, userId);
+    create(@Body() createMovieDto: CreateMovieDto, @UserId() userId: number) {
+        return this.movieService.create(createMovieDto, createMovieDto.files ?? [], userId);
     }
 
     // 좋아요 & 좋아요 취소
