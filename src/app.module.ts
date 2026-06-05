@@ -1,6 +1,5 @@
 import { MiddlewareConsumer, Module, NestModule, RequestMethod } from '@nestjs/common';
 import { MovieModule } from './movie/movie.module';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConditionalModule, ConfigModule, ConfigService } from '@nestjs/config';
 import { GenreModule } from './genre/genre.module';
 import { DirectorModule } from './director/director.module';
@@ -55,22 +54,6 @@ import { WorkerModule } from './worker/worker.module';
                 SESSION_SECRET: Joi.string().required(),
                 DATABASE_URL: Joi.string().required(),
             }),
-        }),
-        TypeOrmModule.forRootAsync({
-            useFactory: (configService: ConfigService) => ({
-                url: configService.get<string>(envVariableKeys.databaseUrl),
-                type: configService.get<string>(envVariableKeys.dbType) as 'postgres',
-                autoLoadEntities: true,
-                synchronize: configService.get<string>(envVariableKeys.env) === 'prod' ? false : true,
-                ...(configService.get<string>(envVariableKeys.env) === 'prod'
-                    ? {
-                          ssl: {
-                              rejectUnauthorized: false,
-                          },
-                      }
-                    : {}),
-            }),
-            inject: [ConfigService],
         }),
         GenreModule,
         DirectorModule,
