@@ -7,7 +7,7 @@
     "license": "UNLICENSED",
     "scripts": {
         "clean": "rm -rf dist tsconfig.build.tsbuildinfo",
-        "build": "nest build",
+        "build": "prisma generate && nest build",
         "migration:run": "typeorm migration:run -d ./dist/database/data-source.js",
         "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
         "start": "nest start",

@@ -20,6 +20,10 @@ jobs:
             SALT_ROUNDS: ${{ secrets.SALT_ROUNDS }}
             ACCESS_TOKEN_SECRET: ${{ secrets.ACCESS_TOKEN_SECRET }}
             REFRESH_TOKEN_SECRET: ${{ secrets.REFRESH_TOKEN_SECRET }}
+            REDIS_HOST: ${{ secrets.REDIS_HOST }}
+            REDIS_PORT: ${{ secrets.REDIS_PORT || '6379' }}
+            REDIS_INSIGHT_PORT: ${{ secrets.REDIS_INSIGHT_PORT || '5540' }}
+            SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
 
         services:
             postgres:
@@ -56,9 +60,14 @@ jobs:
                     echo "DB_USERNAME=${DB_USERNAME}"
                     echo "DB_PASSWORD=${DB_PASSWORD}"
                     echo "DB_DATABASE=${DB_DATABASE}"
+                    echo "DATABASE_URL=postgresql://${DB_USERNAME}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT:-5432}/${DB_DATABASE}"
                     echo "SALT_ROUNDS=${SALT_ROUNDS}"
                     echo "ACCESS_TOKEN_SECRET=${ACCESS_TOKEN_SECRET}"
                     echo "REFRESH_TOKEN_SECRET=${REFRESH_TOKEN_SECRET}"
+                    echo "REDIS_HOST=${REDIS_HOST}"
+                    echo "REDIS_PORT=${REDIS_PORT:-6379}"
+                    echo "REDIS_INSIGHT_PORT=${REDIS_INSIGHT_PORT:-5540}"
+                    echo "SESSION_SECRET=${SESSION_SECRET}"
                   } > .env
                   test -n "${DB_HOST}" && test -n "${DB_USERNAME}" && test -n "${DB_DATABASE}"
 
