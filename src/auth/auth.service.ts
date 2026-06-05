@@ -9,15 +9,17 @@ import { JwtService } from '@nestjs/jwt';
 import { CACHE_MANAGER, Cache } from '@nestjs/cache-manager';
 import { createHash } from 'crypto';
 import { UserService } from 'src/user/user.service';
-
+import { PrismaService } from 'src/common/prisma.service';
+import { Role as PrismaRole } from '../../generated/prisma/prisma/client';
 @Injectable()
 export class AuthService {
     constructor(
-        @InjectRepository(User) private readonly userRepository: Repository<User>,
+        // @InjectRepository(User) private readonly userRepository: Repository<User>,
         private readonly configService: ConfigService,
         private readonly userService: UserService,
         private readonly jwtService: JwtService,
         @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
+        private readonly prisma: PrismaService,
     ) {}
 
     async tokenBlock(token: string) {
@@ -114,7 +116,8 @@ export class AuthService {
     }
 
     async authenticate(email: string, password: string) {
-        const user = await this.userRepository.findOne({ where: { email } });
+        const user = await this.prisma.user.findUnique({ where: { email } });
+        // const user = await this.userRepository.findOne({ where: { email } });
 
         if (!user) {
             throw new UnauthorizedException('잘못된 로그인 정보입니다.');
@@ -128,7 +131,7 @@ export class AuthService {
         return user;
     }
 
-    async issueToken(user: { id: number; role: Role }, isRfreshToken: boolean) {
+    async issueToken(user: { id: number; role: unknown }, isRfreshToken: boolean) {
         const refreshTokenSecret = this.configService.getOrThrow<string>(envVariableKeys.refreshTokenSecret);
         const accessTokenSecret = this.configService.getOrThrow<string>(envVariableKeys.accessTokenSecret);
 

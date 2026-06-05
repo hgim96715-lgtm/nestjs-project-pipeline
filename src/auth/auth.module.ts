@@ -8,9 +8,10 @@ import { LocalStrategy } from './strategy/local.strategy';
 import { PassportModule } from '@nestjs/passport';
 import { JwtStrategy } from './strategy/jwt.strategy';
 import { UserModule } from 'src/user/user.module';
+import { PrismaModule } from 'src/common/prisma.module';
 
 @Module({
-    imports: [TypeOrmModule.forFeature([User]), JwtModule.register({}), PassportModule, UserModule],
+    imports: [TypeOrmModule.forFeature([User]), JwtModule.register({}), PassportModule, UserModule, PrismaModule],
     controllers: [AuthController],
     providers: [AuthService, LocalStrategy, JwtStrategy],
     exports: [AuthService, JwtModule],
