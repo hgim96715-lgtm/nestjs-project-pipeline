@@ -43,7 +43,11 @@ export class UserService {
     }
 
     findAll() {
-        return this.prisma.user.findMany();
+        return this.prisma.user.findMany({
+            omit: {
+                password: true,
+            },
+        });
         // return this.userRepository.find();
     }
 
@@ -63,6 +67,12 @@ export class UserService {
 
         if (!user) {
             throw new NotFoundException('존재하지 않는 id입니다.');
+        }
+        if (user.email !== updateUserDto.email) {
+            const emailUser = await this.prisma.user.findUnique({ where: { email: updateUserDto.email } });
+            if (emailUser) {
+                throw new ConflictException('이미 가입한 이메일입니다.');
+            }
         }
 
         const { password, ...rest } = updateUserDto;
