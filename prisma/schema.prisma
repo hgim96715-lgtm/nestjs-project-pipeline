@@ -74,10 +74,11 @@ model director {
 model genre {
     createAt           DateTime             @default(now()) @db.Timestamp(6)
     updateAt           DateTime             @default(now()) @db.Timestamp(6)
-    version            Int
+    version            Int                  @default(1)
     id                 Int                  @id(map: "PK_0285d4f1655d080cfcf7d1ab141") @default(autoincrement())
     name               String               @unique(map: "UQ_dd8cd9e50dd049656e4be1f7e8c") @db.VarChar
     movie_genres_genre movie_genres_genre[]
+    movies             movie[]
 }
 
 model migrations {
@@ -103,6 +104,8 @@ model movie {
     movie_file         movie_file[]
     movie_genres_genre movie_genres_genre[]
     movie_user_like    movie_user_like[]
+    genre              genre?               @relation(fields: [genreId], references: [id])
+    genreId            Int?
 }
 
 model movie_detail {
