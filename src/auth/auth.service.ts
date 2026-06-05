@@ -151,6 +151,7 @@ export class AuthService {
         const user = await this.authenticate(email, password);
 
         return {
+            user: { id: user.id, role: user.role },
             refreshToken: await this.issueToken(user, true),
             accessToken: await this.issueToken(user, false),
         };

@@ -9,6 +9,7 @@ import {
     Query,
     Get,
     Body,
+    Req,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { Public } from './decorator/public.decorator';
@@ -36,8 +37,11 @@ export class AuthController {
     @ApiBasicAuth()
     @Throttle({ default: { ttl: minutes(1), limit: 5 } })
     @Post('login')
-    loginUser(@Authorization() token: string) {
-        return this.authService.login(token);
+    async loginUser(@Authorization() token: string, @Req() request: any) {
+        const { user, ...result } = await this.authService.login(token);
+        request.session.userId = user.id;
+        request.session.role = user.role;
+        return result;
     }
 
     // @RBAC(Role.admin)
