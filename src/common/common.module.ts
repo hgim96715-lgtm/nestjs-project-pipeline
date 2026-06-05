@@ -4,17 +4,16 @@ import { CommonController } from './common.controller';
 import { MulterModule } from '@nestjs/platform-express';
 import { movieUploadStorage } from './config/movie-upload.storage';
 import { TasksService } from './tasks.service';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { Movie } from 'src/movie/entity/movie.entity';
 import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { PrismaModule } from './prisma.module';
 
 @Module({
     imports: [
         MulterModule.register({
             storage: movieUploadStorage,
         }),
-        TypeOrmModule.forFeature([Movie]),
+        PrismaModule,
 
         BullModule.forRootAsync({
             imports: [ConfigModule],

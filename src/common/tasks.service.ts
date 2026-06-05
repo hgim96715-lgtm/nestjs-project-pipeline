@@ -1,15 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
-import { InjectRepository } from '@nestjs/typeorm';
 import { readdir, unlink } from 'fs/promises';
 import { join, parse } from 'path';
-import { Movie } from 'src/movie/entity/movie.entity';
-import { Repository } from 'typeorm';
+import { PrismaService } from './prisma.service';
 import { tasksLogger } from './logger/tasks.logger';
 
 @Injectable()
 export class TasksService {
-    constructor(@InjectRepository(Movie) private readonly movieRepository: Repository<Movie>) {}
+    constructor(private readonly prisma: PrismaService) {}
 
     private readonly tempFolderPath = join(process.cwd(), 'public', 'temp');
 
@@ -57,14 +55,14 @@ export class TasksService {
         try {
             tasksLogger.info({ message: '영화 like/dislike 집계 시작' });
 
-            await this.movieRepository.query(
-                `UPDATE movie m SET "likeCount"=(
-            SELECT COUNT(*) FROM movie_user_like mul WHERE m.id=mul."movieId" AND mul."isLike"=true)`,
-            );
-            await this.movieRepository.query(
-                `UPDATE movie m SET "dislikeCount"=(
-             SELECT COUNT(*) FROM movie_user_like mul WHERE m.id=mul."movieId" AND mul."isLike"=false)`,
-            );
+            await this.prisma.$executeRaw`
+                UPDATE movie m SET "likeCount"=(
+                    SELECT COUNT(*) FROM movie_user_like mul WHERE m.id=mul."movieId" AND mul."isLike"=true)
+            `;
+            await this.prisma.$executeRaw`
+                UPDATE movie m SET "dislikeCount"=(
+                    SELECT COUNT(*) FROM movie_user_like mul WHERE m.id=mul."movieId" AND mul."isLike"=false)
+            `;
 
             tasksLogger.info({ message: '영화 like/dislike 집계 완료' });
         } catch (error) {
