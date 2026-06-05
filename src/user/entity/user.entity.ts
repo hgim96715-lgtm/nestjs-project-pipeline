@@ -7,9 +7,9 @@ import { Movie } from 'src/movie/entity/movie.entity';
 import { Column, Entity, ManyToMany, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 
 export enum Role {
-    admin = 0,
-    paidUser = 1,
-    user = 2,
+    admin = 'admin',
+    paidUser = 'paidUser',
+    user = 'user',
 }
 
 @Entity()
@@ -24,7 +24,7 @@ export class User extends BaseTable {
     @Exclude({ toPlainOnly: true })
     password: string;
 
-    @Column({ enum: Role, default: Role.user })
+    @Column({ enum: Role, default: Role.user, type: 'enum', enumName: 'Role' })
     role: Role;
 
     @OneToMany(() => Movie, (movie) => movie.creator)

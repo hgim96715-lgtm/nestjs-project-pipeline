@@ -37,7 +37,7 @@ describe('Auth (e2e)', () => {
 
             expect(res.body).toMatchObject({
                 email,
-                role: 0,
+                role: 'admin',
             });
             expect(res.body).not.toHaveProperty('password');
         });
