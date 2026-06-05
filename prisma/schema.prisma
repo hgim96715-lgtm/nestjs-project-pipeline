@@ -17,7 +17,7 @@ enum Role {
 model chat {
     createAt   DateTime   @default(now()) @db.Timestamp(6)
     updateAt   DateTime   @default(now()) @db.Timestamp(6)
-    version    Int
+    version    Int        @default(1)
     id         Int        @id(map: "PK_9d0b2ba74336710fd31154738a5") @default(autoincrement())
     message    String     @db.VarChar
     authorId   Int?
@@ -61,7 +61,7 @@ model chat_room_users_user {
 model director {
     createAt    DateTime @default(now()) @db.Timestamp(6)
     updateAt    DateTime @default(now()) @db.Timestamp(6)
-    version     Int
+    version     Int      @default(1)
     id          Int      @id(map: "PK_b85b179882f31c43324ef124fea") @default(autoincrement())
     name        String   @db.VarChar
     dob         DateTime @db.Timestamp(6)
@@ -90,7 +90,7 @@ model migrations {
 model movie {
     createAt           DateTime             @default(now()) @db.Timestamp(6)
     updateAt           DateTime             @default(now()) @db.Timestamp(6)
-    version            Int
+    version            Int                  @default(1)
     id                 Int                  @id(map: "PK_cb3bb4d61cf764dc035cbedd422") @default(autoincrement())
     title              String               @unique(map: "UQ_a81090ad0ceb645f30f9399c347") @db.VarChar
     likeCount          Int                  @default(0)
