@@ -1,14 +1,11 @@
 import { Module } from '@nestjs/common';
 import { ChatService } from './chat.service';
 import { ChatGateway } from './chat.gateway';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { Chat } from './entity/chat.entity';
-import { ChatRoom } from './entity/chat-room.entity';
-import { User } from 'src/user/entity/user.entity';
 import { AuthModule } from 'src/auth/auth.module';
+import { PrismaModule } from 'src/common/prisma.module';
 
 @Module({
-    imports: [TypeOrmModule.forFeature([Chat, ChatRoom, User]), AuthModule],
+    imports: [PrismaModule, AuthModule],
     providers: [ChatGateway, ChatService],
     exports: [ChatService],
 })
