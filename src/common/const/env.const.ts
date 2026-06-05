@@ -13,6 +13,7 @@ const awsS3Bucket = 'AWS_S3_BUCKET';
 const redisHost = 'REDIS_HOST';
 const redisPort = 'REDIS_PORT';
 const redisInsightPort = 'REDIS_INSIGHT_PORT';
+const sessionSecret = 'SESSION_SECRET';
 
 export const envVariableKeys = {
     env,
@@ -30,4 +31,5 @@ export const envVariableKeys = {
     redisHost,
     redisPort,
     redisInsightPort,
+    sessionSecret,
 };

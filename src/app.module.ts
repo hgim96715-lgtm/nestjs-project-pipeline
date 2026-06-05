@@ -52,6 +52,7 @@ import { WorkerModule } from './worker/worker.module';
                 REDIS_HOST: Joi.string().required(),
                 REDIS_PORT: Joi.number().required(),
                 REDIS_INSIGHT_PORT: Joi.number().required(),
+                SESSION_SECRET: Joi.string().required(),
             }),
         }),
         TypeOrmModule.forRootAsync({
