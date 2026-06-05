@@ -16,8 +16,8 @@ enum Role {
 
 model chat {
     createAt   DateTime   @default(now()) @db.Timestamp(6)
-    updateAt   DateTime   @default(now()) @db.Timestamp(6)
-    version    Int        @default(1)
+    updateAt   DateTime   @default(now()) @updatedAt
+    version    Int        @default(0)
     id         Int        @id(map: "PK_9d0b2ba74336710fd31154738a5") @default(autoincrement())
     message    String     @db.VarChar
     authorId   Int?
@@ -28,8 +28,8 @@ model chat {
 
 model chat_room {
     createAt             DateTime               @default(now()) @db.Timestamp(6)
-    updateAt             DateTime               @default(now()) @db.Timestamp(6)
-    version              Int
+    updateAt             DateTime               @default(now()) @updatedAt
+    version              Int                    @default(0)
     id                   Int                    @id(map: "PK_8aa3a52cf74c96469f0ef9fbe3e") @default(autoincrement())
     chat                 chat[]
     chat_room_user_user  chat_room_user_user[]
@@ -60,8 +60,8 @@ model chat_room_users_user {
 
 model director {
     createAt    DateTime @default(now()) @db.Timestamp(6)
-    updateAt    DateTime @default(now()) @db.Timestamp(6)
-    version     Int      @default(1)
+    updateAt    DateTime @updatedAt
+    version     Int      @default(0)
     id          Int      @id(map: "PK_b85b179882f31c43324ef124fea") @default(autoincrement())
     name        String   @db.VarChar
     dob         DateTime @db.Timestamp(6)
@@ -73,8 +73,8 @@ model director {
 
 model genre {
     createAt           DateTime             @default(now()) @db.Timestamp(6)
-    updateAt           DateTime             @default(now()) @db.Timestamp(6)
-    version            Int                  @default(1)
+    updateAt           DateTime             @updatedAt
+    version            Int                  @default(0)
     id                 Int                  @id(map: "PK_0285d4f1655d080cfcf7d1ab141") @default(autoincrement())
     name               String               @unique(map: "UQ_dd8cd9e50dd049656e4be1f7e8c") @db.VarChar
     movie_genres_genre movie_genres_genre[]
@@ -89,8 +89,8 @@ model migrations {
 
 model movie {
     createAt           DateTime             @default(now()) @db.Timestamp(6)
-    updateAt           DateTime             @default(now()) @db.Timestamp(6)
-    version            Int                  @default(1)
+    updateAt           DateTime             @updatedAt
+    version            Int                  @default(0)
     id                 Int                  @id(map: "PK_cb3bb4d61cf764dc035cbedd422") @default(autoincrement())
     title              String               @unique(map: "UQ_a81090ad0ceb645f30f9399c347") @db.VarChar
     likeCount          Int                  @default(0)
@@ -147,8 +147,8 @@ model movie_user_like {
 
 model user {
     createAt             DateTime               @default(now()) @db.Timestamp(6)
-    updateAt             DateTime               @default(now()) @db.Timestamp(6)
-    version              Int                    @default(1)
+    updateAt             DateTime               @updatedAt
+    version              Int                    @default(0)
     id                   Int                    @id(map: "PK_cace4a159ff9f2512dd42373760") @default(autoincrement())
     email                String                 @unique(map: "UQ_e12875dfb3b1d92d7d7c5377e22") @db.VarChar
     password             String                 @db.VarChar
