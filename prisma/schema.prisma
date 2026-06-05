@@ -1,0 +1,151 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model chat {
+  createAt   DateTime   @default(now()) @db.Timestamp(6)
+  updateAt   DateTime   @default(now()) @db.Timestamp(6)
+  version    Int
+  id         Int        @id(map: "PK_9d0b2ba74336710fd31154738a5") @default(autoincrement())
+  message    String     @db.VarChar
+  authorId   Int?
+  chatRoomId Int?
+  user       user?      @relation(fields: [authorId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_ac7ca6f6fbe56f2a231369f2171")
+  chat_room  chat_room? @relation(fields: [chatRoomId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_e49029a11d5d42ae8a5dd9919a2")
+}
+
+model chat_room {
+  createAt             DateTime               @default(now()) @db.Timestamp(6)
+  updateAt             DateTime               @default(now()) @db.Timestamp(6)
+  version              Int
+  id                   Int                    @id(map: "PK_8aa3a52cf74c96469f0ef9fbe3e") @default(autoincrement())
+  chat                 chat[]
+  chat_room_user_user  chat_room_user_user[]
+  chat_room_users_user chat_room_users_user[]
+}
+
+model chat_room_user_user {
+  chatRoomId Int
+  userId     Int
+  chat_room  chat_room @relation(fields: [chatRoomId], references: [id], onDelete: Cascade, map: "FK_5993417e877e4816eb6a47288cf")
+  user       user      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_9f8dc4c491bcd9bedad166e4464")
+
+  @@id([chatRoomId, userId], map: "PK_47e08dba2a33412d5f4a08f0848")
+  @@index([chatRoomId], map: "IDX_5993417e877e4816eb6a47288c")
+  @@index([userId], map: "IDX_9f8dc4c491bcd9bedad166e446")
+}
+
+model chat_room_users_user {
+  chatRoomId Int
+  userId     Int
+  chat_room  chat_room @relation(fields: [chatRoomId], references: [id], onDelete: Cascade, map: "FK_4abf95f2b061eff07204eb69288")
+  user       user      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_8fc13654c02f47079cdd00935b7")
+
+  @@id([chatRoomId, userId], map: "PK_78b0004f767c1273a6d13c1220b")
+  @@index([chatRoomId], map: "IDX_4abf95f2b061eff07204eb6928")
+  @@index([userId], map: "IDX_8fc13654c02f47079cdd00935b")
+}
+
+model director {
+  createAt    DateTime @default(now()) @db.Timestamp(6)
+  updateAt    DateTime @default(now()) @db.Timestamp(6)
+  version     Int
+  id          Int      @id(map: "PK_b85b179882f31c43324ef124fea") @default(autoincrement())
+  name        String   @db.VarChar
+  dob         DateTime @db.Timestamp(6)
+  nationality String   @db.VarChar
+  movie       movie[]
+
+  @@unique([name, dob], map: "UQ_DIRECTOR_NAME_DOB")
+}
+
+model genre {
+  createAt           DateTime             @default(now()) @db.Timestamp(6)
+  updateAt           DateTime             @default(now()) @db.Timestamp(6)
+  version            Int
+  id                 Int                  @id(map: "PK_0285d4f1655d080cfcf7d1ab141") @default(autoincrement())
+  name               String               @unique(map: "UQ_dd8cd9e50dd049656e4be1f7e8c") @db.VarChar
+  movie_genres_genre movie_genres_genre[]
+}
+
+model migrations {
+  id        Int    @id(map: "PK_8c82d7f526340ab734260ea46be") @default(autoincrement())
+  timestamp BigInt
+  name      String @db.VarChar
+}
+
+model movie {
+  createAt           DateTime             @default(now()) @db.Timestamp(6)
+  updateAt           DateTime             @default(now()) @db.Timestamp(6)
+  version            Int
+  id                 Int                  @id(map: "PK_cb3bb4d61cf764dc035cbedd422") @default(autoincrement())
+  title              String               @unique(map: "UQ_a81090ad0ceb645f30f9399c347") @db.VarChar
+  likeCount          Int                  @default(0)
+  dislikeCount       Int                  @default(0)
+  detailId           Int                  @unique(map: "REL_87276a4fc1647d6db559f61f89")
+  directorId         Int
+  creatorId          Int?
+  movie_detail       movie_detail         @relation(fields: [detailId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_87276a4fc1647d6db559f61f89a")
+  director           director             @relation(fields: [directorId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_a32a80a88aff67851cf5b75d1cb")
+  user               user?                @relation(fields: [creatorId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_b55916de756e46290d52c70fc04")
+  movie_file         movie_file[]
+  movie_genres_genre movie_genres_genre[]
+  movie_user_like    movie_user_like[]
+}
+
+model movie_detail {
+  id     Int    @id(map: "PK_e3014d1b25dbc9648b9abc58537") @default(autoincrement())
+  detail String @db.VarChar
+  movie  movie?
+}
+
+model movie_file {
+  id           Int    @id(map: "PK_676d1b13f7421d5de1ef09486ee") @default(autoincrement())
+  path         String @db.VarChar
+  originalName String @db.VarChar
+  mimetype     String @db.VarChar
+  size         Int
+  movieId      Int?
+  movie        movie? @relation(fields: [movieId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_e4ace713f2b40dda8eb6f9d26e5")
+}
+
+model movie_genres_genre {
+  movieId Int
+  genreId Int
+  genre   genre @relation(fields: [genreId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_1996ce31a9e067304ab168d6715")
+  movie   movie @relation(fields: [movieId], references: [id], onDelete: Cascade, map: "FK_985216b45541c7e0ec644a8dd4e")
+
+  @@id([movieId, genreId], map: "PK_aee18568f9fe4ecca74f35891af")
+  @@index([genreId], map: "IDX_1996ce31a9e067304ab168d671")
+  @@index([movieId], map: "IDX_985216b45541c7e0ec644a8dd4")
+}
+
+model movie_user_like {
+  movieId Int
+  userId  Int
+  isLike  Boolean
+  user    user    @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "FK_6a4d1cde9def796ad01b9ede541")
+  movie   movie   @relation(fields: [movieId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "FK_fd47c2914ce011f6966368c8486")
+
+  @@id([movieId, userId], map: "PK_55397b3cefaa6fc1b47370fe84e")
+}
+
+model user {
+  createAt             DateTime               @default(now()) @db.Timestamp(6)
+  updateAt             DateTime               @default(now()) @db.Timestamp(6)
+  version              Int
+  id                   Int                    @id(map: "PK_cace4a159ff9f2512dd42373760") @default(autoincrement())
+  email                String                 @unique(map: "UQ_e12875dfb3b1d92d7d7c5377e22") @db.VarChar
+  password             String                 @db.VarChar
+  role                 Int                    @default(2)
+  chat                 chat[]
+  chat_room_user_user  chat_room_user_user[]
+  chat_room_users_user chat_room_users_user[]
+  movie                movie[]
+  movie_user_like      movie_user_like[]
+}
