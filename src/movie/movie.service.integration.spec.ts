@@ -22,6 +22,7 @@ import { GetMoviesDto } from './dto/get-movies.dto';
 import { CreateMovieDto } from './dto/create-movie.dto';
 import { UpdateMovieDto } from './dto/update-movie.dto';
 import { NotFoundException } from '@nestjs/common';
+import { PrismaModule } from 'src/common/prisma.module';
 
 async function resetMovieTestData(dataSource: DataSource) {
     await dataSource.query(`
@@ -59,29 +60,29 @@ describe('MovieService - Integration Test', () => {
                         DB_TYPE: Joi.string().valid('postgres').required(),
                         DB_HOST: Joi.string().required(),
                         DB_PORT: Joi.number().required(),
-                        DB_USERNAME: Joi.string().required(),
+                        DB_USER: Joi.string().required(),
                         DB_PASSWORD: Joi.string().required(),
                         DB_DATABASE: Joi.string().required(),
                         SALT_ROUNDS: Joi.number().required(),
                         ACCESS_TOKEN_SECRET: Joi.string().required(),
                         REFRESH_TOKEN_SECRET: Joi.string().required(),
+                        DATABASE_URL: Joi.string().required(),
                     }),
                 }),
                 CacheModule.register({ isGlobal: true }),
                 TypeOrmModule.forRootAsync({
                     inject: [ConfigService],
                     useFactory: (configService: ConfigService) => ({
+                        url: configService.get<string>(envVariableKeys.databaseUrl),
                         type: configService.get<string>(envVariableKeys.dbType) as 'postgres',
-                        host: configService.get<string>(envVariableKeys.dbHost),
-                        port: configService.get<number>(envVariableKeys.dbPort),
-                        username: configService.get<string>(envVariableKeys.dbUsername),
-                        password: configService.get<string>(envVariableKeys.dbPassword),
-                        database: configService.get<string>(envVariableKeys.dbDatabase),
-                        entities: [Movie, MovieDetail, MovieFile, Director, Genre, MovieUserLike, User],
-                        synchronize: true,
+                        // host: configService.get<string>(envVariableKeys.dbHost),
+                        // port: configService.get<number>(envVariableKeys.dbPort),
+                        // username: configService.get<string>(envVariableKeys.dbUsername),
+                        // password: configService.get<string>(envVariableKeys.dbPassword),
+                        // database: configService.get<string>(envVariableKeys.dbDatabase),
                     }),
                 }),
-                TypeOrmModule.forFeature([Movie, MovieDetail, MovieFile, Director, Genre, MovieUserLike, User]),
+                PrismaModule,
             ],
             providers: [MovieService, CommonService],
         }).compile();

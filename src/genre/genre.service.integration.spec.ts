@@ -2,7 +2,6 @@ import '../../test/load-integration-env';
 
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { integrationTestImports } from '../../test/integration-db.helpers';
 import { Director } from 'src/director/entity/director.entity';
@@ -11,6 +10,7 @@ import { MovieDetail } from 'src/movie/entity/movie-detail.entity';
 import { User } from 'src/user/entity/user.entity';
 import { Genre } from './entity/genre.entity';
 import { GenreService } from './genre.service';
+import { PrismaModule } from 'src/common/prisma.module';
 
 async function resetGenreTestData(dataSource: DataSource) {
     await dataSource.query(`
@@ -34,10 +34,7 @@ describe('GenreService - Integration Test', () => {
 
     beforeAll(async () => {
         moduleRef = await Test.createTestingModule({
-            imports: [
-                ...integrationTestImports(),
-                TypeOrmModule.forFeature([Genre, Movie, MovieDetail, Director, User]),
-            ],
+            imports: [...integrationTestImports(), PrismaModule],
             providers: [GenreService],
         }).compile();
 

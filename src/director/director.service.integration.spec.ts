@@ -2,11 +2,10 @@ import '../../test/load-integration-env';
 
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { integrationTestImports } from '../../test/integration-db.helpers';
-import { Director } from './entity/director.entity';
 import { DirectorService } from './director.service';
+import { PrismaModule } from 'src/common/prisma.module';
 
 async function resetDirectorTestData(dataSource: DataSource) {
     await dataSource.query(`
@@ -36,10 +35,7 @@ describe('DirectorService - Integration Test', () => {
 
     beforeAll(async () => {
         moduleRef = await Test.createTestingModule({
-            imports: [
-                ...integrationTestImports(),
-                TypeOrmModule.forFeature([Director]),
-            ],
+            imports: [...integrationTestImports(), PrismaModule],
             providers: [DirectorService],
         }).compile();
 
