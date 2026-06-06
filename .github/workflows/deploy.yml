@@ -81,7 +81,7 @@ jobs:
                   mkdir -p ./public/temp
 
             - name: Install dependencies
-              run: npm install --legacy-peer-deps
+              run: npm ci --legacy-peer-deps
 
             - name: Build Project
               run: npm run build
@@ -92,6 +92,7 @@ jobs:
                   test -f Procfile
                   grep -q 'dist/src/main.js' Procfile
                   test -d node_modules
+                  test -f node_modules/@redis/client/dist/lib/commands/reply-utils.js
                   test -f generated/prisma/prisma/client.js || test -f dist/generated/prisma/prisma/client.js
 
             - name: Run Migration
