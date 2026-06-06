@@ -1,1 +1,1 @@
-web: npm run migration:deploy && node dist/src/main.js
+web: node dist/src/main.js
