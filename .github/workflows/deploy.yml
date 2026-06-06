@@ -54,6 +54,14 @@ jobs:
 
             - name: Create Env File
               run: |
+                  DATABASE_URL=$(node -e "
+                    const u = encodeURIComponent(process.env.DB_USERNAME ?? '');
+                    const p = encodeURIComponent(process.env.DB_PASSWORD ?? '');
+                    const host = process.env.DB_HOST ?? '';
+                    const port = process.env.DB_PORT || '5432';
+                    const db = process.env.DB_DATABASE ?? '';
+                    console.log(\`postgresql://\${u}:\${p}@\${host}:\${port}/\${db}?sslmode=no-verify\`);
+                  ")
                   {
                     echo "ENV=${ENV:-prod}"
                     echo "DB_TYPE=${DB_TYPE:-postgres}"
@@ -62,7 +70,7 @@ jobs:
                     echo "DB_USERNAME=${DB_USERNAME}"
                     echo "DB_PASSWORD=${DB_PASSWORD}"
                     echo "DB_DATABASE=${DB_DATABASE}"
-                    echo "DATABASE_URL=postgresql://${DB_USERNAME}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT:-5432}/${DB_DATABASE}?sslmode=no-verify"
+                    echo "DATABASE_URL=${DATABASE_URL}"
                     echo "SALT_ROUNDS=${SALT_ROUNDS}"
                     echo "ACCESS_TOKEN_SECRET=${ACCESS_TOKEN_SECRET}"
                     echo "REFRESH_TOKEN_SECRET=${REFRESH_TOKEN_SECRET}"
@@ -96,9 +104,14 @@ jobs:
                   test -f generated/prisma/prisma/client.js || test -f dist/generated/prisma/prisma/client.js
 
             - name: Run Prisma Migration (CI validation)
-              env:
-                  DATABASE_URL: postgresql://${{ secrets.DB_USERNAME }}:${{ secrets.DB_PASSWORD }}@localhost:5432/${{ secrets.DB_DATABASE }}
-              run: npm run migration:deploy
+              run: |
+                  export DATABASE_URL=$(node -e "
+                    const u = encodeURIComponent(process.env.DB_USERNAME ?? '');
+                    const p = encodeURIComponent(process.env.DB_PASSWORD ?? '');
+                    const db = process.env.DB_DATABASE ?? '';
+                    console.log(\`postgresql://\${u}:\${p}@localhost:5432/\${db}\`);
+                  ")
+                  npm run migration:deploy
 
             - name: Run Prisma migrations (RDS)
               run: npm run migration:deploy
