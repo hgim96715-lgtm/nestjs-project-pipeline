@@ -49,13 +49,22 @@ async function bootstrap() {
     );
 
     const configService = app.get(ConfigService);
+    const redisHost = configService.getOrThrow<string>(envVariableKeys.redisHost);
+    const redisPort = configService.getOrThrow<number>(envVariableKeys.redisPort);
+    console.log(`Connecting to Redis at ${redisHost}:${redisPort}`);
     const redisClient = createClient({
         socket: {
-            host: configService.getOrThrow<string>(envVariableKeys.redisHost),
-            port: configService.getOrThrow<number>(envVariableKeys.redisPort),
+            host: redisHost,
+            port: redisPort,
         },
     });
-    await redisClient.connect();
+    try {
+        await redisClient.connect();
+        console.log(`Redis connected (${redisHost}:${redisPort})`);
+    } catch (err) {
+        console.error(`Redis connection failed (${redisHost}:${redisPort}):`, err);
+        throw err;
+    }
     app.use(
         session({
             store: new RedisStore({ client: redisClient }),
