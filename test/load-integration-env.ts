@@ -36,6 +36,14 @@ function loadEnvFile(filePath: string, override = false) {
 loadEnvFile(resolve(root, '.env'));
 loadEnvFile(resolve(root, '.env.test'), true);
 
+if (!process.env.DATABASE_URL) {
+    const { DB_USERNAME, DB_PASSWORD, DB_HOST, DB_PORT, DB_DATABASE } = process.env;
+    if (DB_USERNAME && DB_PASSWORD && DB_HOST && DB_DATABASE) {
+        const port = DB_PORT ?? '5432';
+        process.env.DATABASE_URL = `postgresql://${DB_USERNAME}:${DB_PASSWORD}@${DB_HOST}:${port}/${DB_DATABASE}`;
+    }
+}
+
 const dbName = process.env.DB_DATABASE;
 
 if (!dbName?.endsWith('_test')) {

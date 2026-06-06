@@ -1,19 +1,26 @@
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
-import { envVariableKeys } from '../src/common/const/env.const';
-import { Director } from '../src/director/entity/director.entity';
-import { Genre } from '../src/genre/entity/genre.entity';
-import { Movie } from '../src/movie/entity/movie.entity';
-import { MovieDetail } from '../src/movie/entity/movie-detail.entity';
-import { MovieFile } from '../src/movie/entity/movie-file.entity';
-import { MovieUserLike } from '../src/movie/entity/movie-user-like.entity';
-import { User } from '../src/user/entity/user.entity';
+import { ConfigModule } from '@nestjs/config';
 import * as Joi from 'joi';
-import { EntitySchema, EntityTarget, MixedList, ObjectLiteral } from 'typeorm';
+import { PrismaModule } from '../src/common/prisma.module';
+import { PrismaService } from '../src/common/prisma.service';
 
-export const INTEGRATION_ENTITIES = [Movie, MovieDetail, MovieFile, Director, Genre, MovieUserLike, User] as const;
+const INTEGRATION_TRUNCATE_SQL = `
+    TRUNCATE TABLE
+        chat,
+        chat_room_users_user,
+        chat_room_user_user,
+        chat_room,
+        movie_user_like,
+        movie_file,
+        movie_genres_genre,
+        movie,
+        movie_detail,
+        genre,
+        director,
+        "user"
+    RESTART IDENTITY CASCADE
+`;
 
-export function integrationTestImports(entities: EntityTarget<ObjectLiteral>[] = [...INTEGRATION_ENTITIES]) {
+export function integrationTestImports() {
     return [
         ConfigModule.forRoot({
             isGlobal: true,
@@ -26,23 +33,16 @@ export function integrationTestImports(entities: EntityTarget<ObjectLiteral>[] =
                 DB_USERNAME: Joi.string().required(),
                 DB_PASSWORD: Joi.string().required(),
                 DB_DATABASE: Joi.string().required(),
+                DATABASE_URL: Joi.string().required(),
                 SALT_ROUNDS: Joi.number().required(),
                 ACCESS_TOKEN_SECRET: Joi.string().required(),
                 REFRESH_TOKEN_SECRET: Joi.string().required(),
             }),
         }),
-        TypeOrmModule.forRootAsync({
-            inject: [ConfigService],
-            useFactory: (configService: ConfigService): TypeOrmModuleOptions => ({
-                type: configService.get<string>(envVariableKeys.dbType) as 'postgres',
-                host: configService.get<string>(envVariableKeys.dbHost),
-                port: configService.get<number>(envVariableKeys.dbPort),
-                username: configService.get<string>(envVariableKeys.dbUsername),
-                password: configService.get<string>(envVariableKeys.dbPassword),
-                database: configService.get<string>(envVariableKeys.dbDatabase),
-                entities: entities as MixedList<string | Function | EntitySchema>,
-                synchronize: true,
-            }),
-        }),
+        PrismaModule,
     ];
+}
+
+export async function resetIntegrationTestData(prisma: PrismaService) {
+    await prisma.$executeRawUnsafe(INTEGRATION_TRUNCATE_SQL);
 }
