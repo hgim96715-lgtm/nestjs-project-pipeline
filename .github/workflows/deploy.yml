@@ -84,9 +84,10 @@ jobs:
               env:
                   DATABASE_URL: ${{ secrets.DATABASE_URL }}
               run: |
-                  set -o pipefail
-                  npm run migration:deploy 2>&1 | tee migrate.log
-                  status=${PIPESTATUS[0]}
+                  set +e
+                  npm run migration:deploy > migrate.log 2>&1
+                  status=$?
+                  cat migrate.log
                   if [ "$status" -ne 0 ] && grep -q 'P3005' migrate.log; then
                     echo "RDS has existing schema (TypeORM). Baselining Prisma migration history..."
                     npx prisma migrate resolve --applied "20260605052743_init"
