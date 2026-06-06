@@ -5,7 +5,7 @@ import { GenreModule } from './genre/genre.module';
 import { DirectorModule } from './director/director.module';
 
 import * as Joi from 'joi';
-import { envVariableKeys } from './common/const/env.const';
+import { envVariableKeys, parseRedisConnection } from './common/const/env.const';
 import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
@@ -69,10 +69,13 @@ import { WorkerModule } from './worker/worker.module';
             imports: [ConfigModule],
             inject: [ConfigService],
             useFactory: (configService: ConfigService) => {
-                const host = configService.getOrThrow<string>(envVariableKeys.redisHost);
-                const port = configService.getOrThrow<number>(envVariableKeys.redisPort);
+                const redis = parseRedisConnection(
+                    configService.getOrThrow<string>(envVariableKeys.redisHost),
+                    configService.getOrThrow<number>(envVariableKeys.redisPort),
+                    configService.get<string>(envVariableKeys.redisTls),
+                );
                 return {
-                    stores: [createKeyv(`redis://${host}:${port}`)],
+                    stores: [createKeyv(redis.url)],
                 };
             },
         }),

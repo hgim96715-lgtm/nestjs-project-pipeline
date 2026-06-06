@@ -2,7 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { envVariableKeys } from './common/const/env.const';
+import { envVariableKeys, parseRedisConnection } from './common/const/env.const';
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
@@ -49,20 +49,18 @@ async function bootstrap() {
     );
 
     const configService = app.get(ConfigService);
-    const redisHost = configService.getOrThrow<string>(envVariableKeys.redisHost);
-    const redisPort = configService.getOrThrow<number>(envVariableKeys.redisPort);
-    console.log(`Connecting to Redis at ${redisHost}:${redisPort}`);
-    const redisClient = createClient({
-        socket: {
-            host: redisHost,
-            port: redisPort,
-        },
-    });
+    const redis = parseRedisConnection(
+        configService.getOrThrow<string>(envVariableKeys.redisHost),
+        configService.getOrThrow<number>(envVariableKeys.redisPort),
+        configService.get<string>(envVariableKeys.redisTls),
+    );
+    console.log(`Connecting to Redis at ${redis.url}`);
+    const redisClient = createClient({ url: redis.url });
     try {
         await redisClient.connect();
-        console.log(`Redis connected (${redisHost}:${redisPort})`);
+        console.log(`Redis connected (${redis.url})`);
     } catch (err) {
-        console.error(`Redis connection failed (${redisHost}:${redisPort}):`, err);
+        console.error(`Redis connection failed (${redis.url}):`, err);
         throw err;
     }
     app.use(

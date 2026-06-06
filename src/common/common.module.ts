@@ -6,6 +6,7 @@ import { movieUploadStorage } from './config/movie-upload.storage';
 import { TasksService } from './tasks.service';
 import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { parseRedisConnection } from './const/env.const';
 import { PrismaModule } from './prisma.module';
 
 @Module({
@@ -18,12 +19,20 @@ import { PrismaModule } from './prisma.module';
         BullModule.forRootAsync({
             imports: [ConfigModule],
             inject: [ConfigService],
-            useFactory: (config: ConfigService) => ({
-                connection: {
-                    host: config.getOrThrow('REDIS_HOST'),
-                    port: config.getOrThrow('REDIS_PORT'),
-                },
-            }),
+            useFactory: (config: ConfigService) => {
+                const redis = parseRedisConnection(
+                    config.getOrThrow('REDIS_HOST'),
+                    config.getOrThrow('REDIS_PORT'),
+                    config.get('REDIS_TLS'),
+                );
+                return {
+                    connection: {
+                        host: redis.host,
+                        port: redis.port,
+                        ...(redis.tls ? { tls: {} } : {}),
+                    },
+                };
+            },
         }),
         BullModule.registerQueue({
             name: 'thumbnail-generation',
