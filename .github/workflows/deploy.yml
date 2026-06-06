@@ -118,13 +118,14 @@ jobs:
                   AWS_REGION: ${{ secrets.AWS_REGION }}
                   AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
                   S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
+                  VERSION_LABEL: ${{ github.sha }}-${{ github.run_number }}
               run: |
                   aws elasticbeanstalk create-application-version \
                     --application-name NestJS-Project-EB \
-                    --version-label "$GITHUB_SHA" \
+                    --version-label "$VERSION_LABEL" \
                     --source-bundle "S3Bucket=${S3_BUCKET},S3Key=deployment.zip"
 
                   aws elasticbeanstalk update-environment \
                     --application-name NestJS-Project-EB \
                     --environment-name NestJS-Project-EB-env \
-                    --version-label "$GITHUB_SHA"
+                    --version-label "$VERSION_LABEL"
