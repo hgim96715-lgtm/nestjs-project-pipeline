@@ -95,8 +95,10 @@ jobs:
                   test -f node_modules/@redis/client/dist/lib/commands/reply-utils.js
                   test -f generated/prisma/prisma/client.js || test -f dist/generated/prisma/prisma/client.js
 
-            - name: Run Migration
-              run: npm run migration:run
+            - name: Run Prisma Migration (CI validation)
+              env:
+                  DATABASE_URL: postgresql://${{ secrets.DB_USERNAME }}:${{ secrets.DB_PASSWORD }}@localhost:5432/${{ secrets.DB_DATABASE }}
+              run: npm run migration:deploy
 
             - name: Zip Artifact For Deplyment
               run: zip -r deployment.zip .
