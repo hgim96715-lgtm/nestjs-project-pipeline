@@ -110,8 +110,9 @@ jobs:
                   AWS_REGION: ${{ secrets.AWS_REGION }}
                   AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
                   S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
+                  VERSION_LABEL: ${{ github.sha }}-${{ github.run_number }}-${{ github.run_attempt }}
               run: |
-                  aws s3 cp deployment.zip "s3://${S3_BUCKET}/deployment.zip"
+                  aws s3 cp deployment.zip "s3://${S3_BUCKET}/deployments/${VERSION_LABEL}.zip"
 
             - name: Deploy to AWS Elastic Beanstalk
               env:
@@ -120,12 +121,22 @@ jobs:
                   AWS_REGION: ${{ secrets.AWS_REGION }}
                   AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
                   S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
-                  VERSION_LABEL: ${{ github.sha }}-${{ github.run_number }}
+                  VERSION_LABEL: ${{ github.sha }}-${{ github.run_number }}-${{ github.run_attempt }}
               run: |
-                  aws elasticbeanstalk create-application-version \
+                  S3_KEY="deployments/${VERSION_LABEL}.zip"
+
+                  if ! aws elasticbeanstalk describe-application-versions \
                     --application-name NestJS-Project-EB \
-                    --version-label "$VERSION_LABEL" \
-                    --source-bundle "S3Bucket=${S3_BUCKET},S3Key=deployment.zip"
+                    --version-labels "$VERSION_LABEL" \
+                    --query 'ApplicationVersions[0].VersionLabel' \
+                    --output text | grep -qx "$VERSION_LABEL"; then
+                    aws elasticbeanstalk create-application-version \
+                      --application-name NestJS-Project-EB \
+                      --version-label "$VERSION_LABEL" \
+                      --source-bundle "S3Bucket=${S3_BUCKET},S3Key=${S3_KEY}"
+                  else
+                    echo "Application version ${VERSION_LABEL} already exists, skipping create."
+                  fi
 
                   aws elasticbeanstalk update-environment \
                     --application-name NestJS-Project-EB \
