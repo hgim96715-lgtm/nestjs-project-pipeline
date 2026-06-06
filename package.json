@@ -11,7 +11,7 @@
         "migration:run": "typeorm migration:run -d ./dist/src/database/data-source.js",
         "migration:deploy": "prisma migrate deploy",
         "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
-        "start": "nest start",
+        "start": "node dist/src/main.js",
         "start:dev": "nest start --watch",
         "start:dev:worker": "export TYPE=worker && export PORT=3002 && nest start --watch",
         "start:dev:clean": "pnpm run clean && nest start --watch",

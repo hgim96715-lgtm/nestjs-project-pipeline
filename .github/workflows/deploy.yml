@@ -1,11 +1,11 @@
 name: Deploy to AWS Elastic Beanstalk
 
-# on:
-#     push:
-#         branches:
-#             - main
 on:
-    workflow_dispatch:
+    push:
+        branches:
+            - main
+# on:
+#     workflow_dispatch:
 jobs:
     build-and-deploy:
         runs-on: ubuntu-latest

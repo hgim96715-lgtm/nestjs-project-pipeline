@@ -18,6 +18,9 @@ ffmpeg.setFfmpegPath(ffmpegInstaller.path);
 ffmpeg.setFfprobePath(ffprobeStatic.path);
 
 async function bootstrap() {
+    const port = Number(process.env.PORT) || 3001;
+    console.log(`Starting application on 0.0.0.0:${port} (ENV=${process.env.ENV ?? 'unknown'})`);
+
     const app = await NestFactory.create(AppModule);
     app.useLogger(app.get(WINSTON_MODULE_NEST_PROVIDER));
     app.enableVersioning({
@@ -67,7 +70,8 @@ async function bootstrap() {
             },
         }),
     );
-    await app.listen(process.env.PORT || 3001);
+    await app.listen(port, '0.0.0.0');
+    console.log(`Application is listening on 0.0.0.0:${port}`);
 }
 
 bootstrap().catch((err) => {
