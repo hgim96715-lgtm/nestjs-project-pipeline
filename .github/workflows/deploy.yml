@@ -24,6 +24,8 @@ jobs:
             REDIS_PORT: ${{ secrets.REDIS_PORT || '6379' }}
             REDIS_INSIGHT_PORT: ${{ secrets.REDIS_INSIGHT_PORT || '5540' }}
             SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+            AWS_REGION: ${{ secrets.AWS_REGION }}
+            AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
 
         services:
             postgres:
@@ -60,7 +62,7 @@ jobs:
                     echo "DB_USERNAME=${DB_USERNAME}"
                     echo "DB_PASSWORD=${DB_PASSWORD}"
                     echo "DB_DATABASE=${DB_DATABASE}"
-                    echo "DATABASE_URL=postgresql://${DB_USERNAME}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT:-5432}/${DB_DATABASE}"
+                    echo "DATABASE_URL=postgresql://${DB_USERNAME}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT:-5432}/${DB_DATABASE}?sslmode=require"
                     echo "SALT_ROUNDS=${SALT_ROUNDS}"
                     echo "ACCESS_TOKEN_SECRET=${ACCESS_TOKEN_SECRET}"
                     echo "REFRESH_TOKEN_SECRET=${REFRESH_TOKEN_SECRET}"
@@ -68,6 +70,8 @@ jobs:
                     echo "REDIS_PORT=${REDIS_PORT:-6379}"
                     echo "REDIS_INSIGHT_PORT=${REDIS_INSIGHT_PORT:-5540}"
                     echo "SESSION_SECRET=${SESSION_SECRET}"
+                    echo "AWS_REGION=${AWS_REGION}"
+                    echo "AWS_S3_BUCKET=${AWS_S3_BUCKET}"
                   } > .env
                   test -n "${DB_HOST}" && test -n "${DB_USERNAME}" && test -n "${DB_DATABASE}"
 
@@ -81,6 +85,14 @@ jobs:
 
             - name: Build Project
               run: npm run build
+
+            - name: Verify build artifact
+              run: |
+                  test -f dist/src/main.js
+                  test -f Procfile
+                  grep -q 'dist/src/main.js' Procfile
+                  test -d node_modules
+                  test -f generated/prisma/prisma/client.js || test -f dist/generated/prisma/prisma/client.js
 
             - name: Run Migration
               run: npm run migration:run

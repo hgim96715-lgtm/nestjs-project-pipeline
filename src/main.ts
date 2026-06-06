@@ -69,4 +69,8 @@ async function bootstrap() {
     );
     await app.listen(process.env.PORT || 3001);
 }
-bootstrap();
+
+bootstrap().catch((err) => {
+    console.error('Application bootstrap failed:', err);
+    process.exit(1);
+});
