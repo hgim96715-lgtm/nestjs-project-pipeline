@@ -83,7 +83,17 @@ jobs:
             - name: Run Prisma migrations (RDS)
               env:
                   DATABASE_URL: ${{ secrets.DATABASE_URL }}
-              run: npm run migration:deploy
+              run: |
+                  set -o pipefail
+                  npm run migration:deploy 2>&1 | tee migrate.log
+                  status=${PIPESTATUS[0]}
+                  if [ "$status" -ne 0 ] && grep -q 'P3005' migrate.log; then
+                    echo "RDS has existing schema (TypeORM). Baselining Prisma migration history..."
+                    npx prisma migrate resolve --applied "20260605052743_init"
+                    npm run migration:deploy
+                  elif [ "$status" -ne 0 ]; then
+                    exit "$status"
+                  fi
 
             - name: Zip Artifact For Deplyment
               run: zip -r deployment.zip .
