@@ -54,23 +54,16 @@ jobs:
 
             - name: Create Env File
               run: |
-                  DATABASE_URL=$(node -e "
-                    const u = encodeURIComponent(process.env.DB_USERNAME ?? '');
-                    const p = encodeURIComponent(process.env.DB_PASSWORD ?? '');
-                    const host = process.env.DB_HOST ?? '';
-                    const port = process.env.DB_PORT || '5432';
-                    const db = process.env.DB_DATABASE ?? '';
-                    console.log(\`postgresql://\${u}:\${p}@\${host}:\${port}/\${db}?sslmode=no-verify\`);
-                  ")
+                  DATABASE_URL=$(node scripts/build-database-url.js --ssl-no-verify)
                   {
                     echo "ENV=${ENV:-prod}"
                     echo "DB_TYPE=${DB_TYPE:-postgres}"
                     echo "DB_HOST=${DB_HOST}"
                     echo "DB_PORT=${DB_PORT:-5432}"
                     echo "DB_USERNAME=${DB_USERNAME}"
-                    echo "DB_PASSWORD=${DB_PASSWORD}"
+                    printf 'DB_PASSWORD=%s\n' "${DB_PASSWORD}"
                     echo "DB_DATABASE=${DB_DATABASE}"
-                    echo "DATABASE_URL=${DATABASE_URL}"
+                    printf 'DATABASE_URL=%s\n' "${DATABASE_URL}"
                     echo "SALT_ROUNDS=${SALT_ROUNDS}"
                     echo "ACCESS_TOKEN_SECRET=${ACCESS_TOKEN_SECRET}"
                     echo "REFRESH_TOKEN_SECRET=${REFRESH_TOKEN_SECRET}"
@@ -105,16 +98,13 @@ jobs:
 
             - name: Run Prisma Migration (CI validation)
               run: |
-                  export DATABASE_URL=$(node -e "
-                    const u = encodeURIComponent(process.env.DB_USERNAME ?? '');
-                    const p = encodeURIComponent(process.env.DB_PASSWORD ?? '');
-                    const db = process.env.DB_DATABASE ?? '';
-                    console.log(\`postgresql://\${u}:\${p}@localhost:5432/\${db}\`);
-                  ")
+                  export DATABASE_URL=$(node scripts/build-database-url.js --host=localhost)
                   npm run migration:deploy
 
             - name: Run Prisma migrations (RDS)
-              run: npm run migration:deploy
+              run: |
+                  export DATABASE_URL=$(node scripts/build-database-url.js --ssl-no-verify)
+                  npm run migration:deploy
 
             - name: Zip Artifact For Deplyment
               run: zip -r deployment.zip .
