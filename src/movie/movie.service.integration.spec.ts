@@ -3,170 +3,118 @@ import '../../test/load-integration-env';
 import { Test, TestingModule } from '@nestjs/testing';
 import { MovieService } from './movie.service';
 import { CACHE_MANAGER, Cache, CacheModule } from '@nestjs/cache-manager';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { Movie } from './entity/movie.entity';
-import { MovieDetail } from './entity/movie-detail.entity';
-import { MovieFile } from './entity/movie-file.entity';
-import { Director } from 'src/director/entity/director.entity';
-import { Genre } from 'src/genre/entity/genre.entity';
-import { MovieUserLike } from './entity/movie-user-like.entity';
-import { User } from 'src/user/entity/user.entity';
 import { CommonService } from 'src/common/common.service';
 import { mkdir, writeFile } from 'fs/promises';
 import { join } from 'path';
-import { DataSource, QueryRunner } from 'typeorm';
-import { envVariableKeys } from 'src/common/const/env.const';
-import * as Joi from 'joi';
 import { GetMoviesDto } from './dto/get-movies.dto';
 import { CreateMovieDto } from './dto/create-movie.dto';
 import { UpdateMovieDto } from './dto/update-movie.dto';
 import { NotFoundException } from '@nestjs/common';
-import { PrismaModule } from 'src/common/prisma.module';
-
-async function resetMovieTestData(dataSource: DataSource) {
-    await dataSource.query(`
-        TRUNCATE TABLE
-            movie_user_like,
-            movie_file,
-            movie_genres_genre,
-            movie,
-            movie_detail,
-            genre,
-            director,
-            "user"
-        RESTART IDENTITY CASCADE
-    `);
-}
+import { PrismaService } from 'src/common/prisma.service';
+import { integrationTestImports, resetIntegrationTestData } from '../../test/integration-db.helpers';
+import { director, genre, movie, user } from '../../generated/prisma/prisma/client';
 
 describe('MovieService - Integration Test', () => {
     let service: MovieService;
-    let dataSource: DataSource;
+    let prisma: PrismaService;
     let moduleRef: TestingModule;
     let cacheManager: Cache;
-    let users: User[];
-    let directors: Director[];
-    let genres: Genre[];
-    let movies: Movie[];
+    let users: user[];
+    let directors: director[];
+    let genres: genre[];
+    let movies: movie[];
 
     beforeAll(async () => {
         moduleRef = await Test.createTestingModule({
-            imports: [
-                ConfigModule.forRoot({
-                    isGlobal: true,
-                    ignoreEnvFile: true,
-                    validationSchema: Joi.object({
-                        ENV: Joi.string().valid('dev', 'prod').required(),
-                        DB_TYPE: Joi.string().valid('postgres').required(),
-                        DB_HOST: Joi.string().required(),
-                        DB_PORT: Joi.number().required(),
-                        DB_USER: Joi.string().required(),
-                        DB_PASSWORD: Joi.string().required(),
-                        DB_DATABASE: Joi.string().required(),
-                        SALT_ROUNDS: Joi.number().required(),
-                        ACCESS_TOKEN_SECRET: Joi.string().required(),
-                        REFRESH_TOKEN_SECRET: Joi.string().required(),
-                        DATABASE_URL: Joi.string().required(),
-                    }),
-                }),
-                CacheModule.register({ isGlobal: true }),
-                TypeOrmModule.forRootAsync({
-                    inject: [ConfigService],
-                    useFactory: (configService: ConfigService) => ({
-                        url: configService.get<string>(envVariableKeys.databaseUrl),
-                        type: configService.get<string>(envVariableKeys.dbType) as 'postgres',
-                        // host: configService.get<string>(envVariableKeys.dbHost),
-                        // port: configService.get<number>(envVariableKeys.dbPort),
-                        // username: configService.get<string>(envVariableKeys.dbUsername),
-                        // password: configService.get<string>(envVariableKeys.dbPassword),
-                        // database: configService.get<string>(envVariableKeys.dbDatabase),
-                    }),
-                }),
-                PrismaModule,
-            ],
+            imports: [...integrationTestImports(), CacheModule.register({ isGlobal: true })],
             providers: [MovieService, CommonService],
         }).compile();
 
-        service = moduleRef.get<MovieService>(MovieService);
-        dataSource = moduleRef.get<DataSource>(DataSource);
-        cacheManager = moduleRef.get<Cache>(CACHE_MANAGER);
+        service = moduleRef.get(MovieService);
+        prisma = moduleRef.get(PrismaService);
+        cacheManager = moduleRef.get(CACHE_MANAGER);
     }, 30_000);
 
     afterAll(async () => {
-        if (dataSource?.isInitialized) {
-            await dataSource.destroy();
-        }
+        await prisma?.$disconnect();
         await moduleRef?.close();
     });
 
     beforeEach(async () => {
         await cacheManager.clear();
-        await resetMovieTestData(dataSource);
+        await resetIntegrationTestData(prisma);
 
-        const movieRepository = dataSource.getRepository(Movie);
-        const movieDetailRepository = dataSource.getRepository(MovieDetail);
-        const userRepository = dataSource.getRepository(User);
-        const genreRepository = dataSource.getRepository(Genre);
-        const directorRepository = dataSource.getRepository(Director);
-
-        users = await userRepository.save([
-            userRepository.create({ email: 'test1@test.com', password: 'password' }),
-            userRepository.create({ email: 'test2@test.com', password: 'password' }),
+        users = await Promise.all([
+            prisma.user.create({ data: { email: 'test1@test.com', password: 'password' } }),
+            prisma.user.create({ data: { email: 'test2@test.com', password: 'password' } }),
         ]);
 
-        directors = await directorRepository.save([
-            directorRepository.create({
-                dob: new Date('1990-01-01'),
-                nationality: 'Korean',
-                name: 'director1',
+        directors = await Promise.all([
+            prisma.director.create({
+                data: {
+                    dob: new Date('1990-01-01'),
+                    nationality: 'Korean',
+                    name: 'director1',
+                },
             }),
-            directorRepository.create({
-                dob: new Date('1991-01-01'),
-                nationality: 'Korean',
-                name: 'director2',
+            prisma.director.create({
+                data: {
+                    dob: new Date('1991-01-01'),
+                    nationality: 'Korean',
+                    name: 'director2',
+                },
             }),
         ]);
 
-        genres = await genreRepository.save([
-            genreRepository.create({ name: 'genre1' }),
-            genreRepository.create({ name: 'genre2' }),
+        genres = await Promise.all([
+            prisma.genre.create({ data: { name: 'genre1' } }),
+            prisma.genre.create({ data: { name: 'genre2' } }),
         ]);
 
-        movies = await movieRepository.save(
-            Array.from({ length: 10 }, (_, i) => {
-                const x = i + 1;
-                return movieRepository.create({
-                    title: `movie ${x}`,
-                    detail: movieDetailRepository.create({ detail: `detail${x}` }),
-                    director: directors[0],
-                    genres: genres.slice(0, 2),
-                    creator: users[0],
+        movies = [];
+        for (let i = 1; i <= 10; i++) {
+            const movieDetail = await prisma.movie_detail.create({
+                data: { detail: `detail${i}` },
+            });
+            const movie = await prisma.movie.create({
+                data: {
+                    title: `movie ${i}`,
+                    detailId: movieDetail.id,
+                    directorId: directors[0].id,
+                    creatorId: users[0].id,
                     createAt: new Date('2026-01-01'),
-                    updateAt: new Date('2026-01-01'),
-                    files: [],
-                });
-            }),
-        );
+                },
+            });
+            await prisma.movie_genres_genre.createMany({
+                data: genres.map((genre) => ({
+                    movieId: movie.id,
+                    genreId: genre.id,
+                })),
+            });
+            movies.push(movie);
+        }
     });
 
     it('should be defined', () => {
         expect(service).toBeDefined();
     });
+
     describe('findMovieRecent', () => {
         it('should return the recent movies', async () => {
-            const recentMovies = (await service.findMovieRecent()) as Movie[];
-            let sortedResult = [...movies];
-            sortedResult.sort((a, b) => b.createAt.getTime() - a.createAt.getTime());
-            let sortedIds = sortedResult.slice(0, 10).map((x) => x.id);
+            const recentMovies = (await service.findMovieRecent()) as movie[];
+            const sortedResult = [...movies].sort((a, b) => b.createAt.getTime() - a.createAt.getTime());
+            const sortedIds = sortedResult.slice(0, 10).map((x) => x.id);
             expect(recentMovies).toHaveLength(10);
             expect(recentMovies.map((x) => x.id)).toEqual(sortedIds);
         });
+
         it('should cache the recent movies', async () => {
-            const result = (await service.findMovieRecent()) as Movie[];
+            const result = (await service.findMovieRecent()) as movie[];
             const cachedResult = await cacheManager.get('MOVIE_RECENT');
             expect(cachedResult).toEqual(result);
         });
     });
+
     describe('findAll', () => {
         it('should return movies with correct titles', async () => {
             const dto = {
@@ -180,6 +128,7 @@ describe('MovieService - Integration Test', () => {
             expect(result.data[0]).not.toHaveProperty('likeStatus');
         });
     });
+
     it('should return likeStatus if userId is provided', async () => {
         const dto: GetMoviesDto = {
             order: ['id_ASC'],
@@ -196,10 +145,12 @@ describe('MovieService - Integration Test', () => {
             const result = await service.findOne(movieId);
             expect(result).toHaveProperty('id');
             expect(result.title).toBe(movies[0].title);
-            expect(result.detail).toHaveProperty('id');
-            expect(result.detail.detail).toBe(movies[0].detail.detail);
-            expect(result.director.id).toBe(movies[0].director.id);
-            expect(result.genres.map((x) => x.id)).toEqual(movies[0].genres.map((x) => x.id));
+            expect(result.movie_detail).toHaveProperty('id');
+            expect(result.movie_detail.detail).toBe(`detail1`);
+            expect(result.director.id).toBe(movies[0].directorId);
+            expect(result.movie_genres_genre.map((x) => x.genreId).sort()).toEqual(
+                genres.map((g) => g.id).sort(),
+            );
         });
 
         it('should throw NotFoundException when movie does not exist', async () => {
@@ -220,25 +171,17 @@ describe('MovieService - Integration Test', () => {
                 genreIds: [genres[0].id],
             };
 
-            const qr = dataSource.createQueryRunner();
-            await qr.connect();
-            await qr.startTransaction();
+            const result = await service.create(createMovieDto, ['test.mp4'], users[0].id);
 
-            try {
-                const result = await service.create(createMovieDto, ['test.mp4'], qr, users[0].id);
-                await qr.commitTransaction();
-
-                expect(result).toHaveProperty('id');
-                expect(result!.title).toBe(createMovieDto.title);
-                expect(result!.detail).toHaveProperty('id');
-                expect(result!.detail.detail).toBe(createMovieDto.detail);
-                expect(result!.director.id).toBe(createMovieDto.directorId);
-                expect(result!.genres.map((x) => x.id)).toEqual(createMovieDto.genreIds);
-            } finally {
-                await qr.release();
-            }
+            expect(result).toHaveProperty('id');
+            expect(result!.title).toBe(createMovieDto.title);
+            expect(result!.movie_detail).toHaveProperty('id');
+            expect(result!.movie_detail.detail).toBe(createMovieDto.detail);
+            expect(result!.director.id).toBe(createMovieDto.directorId);
+            expect(result!.movie_genres_genre.map((x) => x.genreId)).toEqual(createMovieDto.genreIds);
         });
     });
+
     describe('update', () => {
         it('should update a movie correctly', async () => {
             const movieId = movies[0].id;
@@ -251,40 +194,45 @@ describe('MovieService - Integration Test', () => {
             const result = await service.update(movieId, updateMovieDto);
             expect(result).toHaveProperty('id');
             expect(result!.title).toBe(updateMovieDto.title);
-            expect(result!.detail).toHaveProperty('id');
-            expect(result!.detail.detail).toBe(updateMovieDto.detail);
+            expect(result!.movie_detail.detail).toBe(updateMovieDto.detail);
             expect(result!.director.id).toBe(updateMovieDto.directorId);
-            expect(result!.genres.map((x) => x.id)).toEqual(updateMovieDto.genreIds);
+            expect(result!.movie_genres_genre.map((x) => x.genreId)).toEqual(updateMovieDto.genreIds);
         });
+
         it('should throw an error if the movie does not exist', async () => {
             const updateMovieDto: UpdateMovieDto = {
                 title: 'test2',
             };
             await expect(service.update(999, updateMovieDto)).rejects.toThrow(NotFoundException);
         });
+
         it('should throw an error if the genre does not exist', async () => {
             const updateMovieDto: UpdateMovieDto = {
                 genreIds: [999],
             };
             await expect(service.update(movies[0].id, updateMovieDto)).rejects.toThrow(NotFoundException);
         });
-        it('should throw an error if the genre does not exist', async () => {
+
+        it('should throw an error if one of the genre ids does not exist', async () => {
             const updateMovieDto: UpdateMovieDto = {
                 genreIds: [genres[0].id, genres[1].id, 999],
             };
             await expect(service.update(movies[0].id, updateMovieDto)).rejects.toThrow(NotFoundException);
         });
     });
+
     describe('remove', () => {
         it('should delete a movie correctly', async () => {
             const movieId = movies[0].id;
             const result = await service.remove(movieId);
             expect(result).toBe(`${movieId}의 영화가 삭제되었습니다.`);
         });
+
         it('should throw an error if the movie does not exist', async () => {
             await expect(service.remove(999)).rejects.toThrow(NotFoundException);
         });
     });
+
     describe('toggleMovieLike', () => {
         it('should create like correctly', async () => {
             const userId = users[0].id;
@@ -292,12 +240,14 @@ describe('MovieService - Integration Test', () => {
             const result = await service.toggleMovieLie(movieId, userId, true);
             expect(result).toEqual({ isLike: true });
         });
+
         it('should create dislike correctly', async () => {
             const userId = users[0].id;
             const movieId = movies[0].id;
             const result = await service.toggleMovieLie(movieId, userId, false);
             expect(result).toEqual({ isLike: false });
         });
+
         it('should toggle like correctly', async () => {
             const userId = users[0].id;
             const movieId = movies[0].id;
@@ -305,6 +255,7 @@ describe('MovieService - Integration Test', () => {
             const result = await service.toggleMovieLie(movieId, userId, true);
             expect(result.isLike).toBeNull();
         });
+
         it('should toggle dislike correctly', async () => {
             const userId = users[0].id;
             const movieId = movies[0].id;

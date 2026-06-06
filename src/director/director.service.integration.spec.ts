@@ -2,29 +2,13 @@ import '../../test/load-integration-env';
 
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { DataSource } from 'typeorm';
-import { integrationTestImports } from '../../test/integration-db.helpers';
+import { PrismaService } from 'src/common/prisma.service';
+import { integrationTestImports, resetIntegrationTestData } from '../../test/integration-db.helpers';
 import { DirectorService } from './director.service';
-import { PrismaModule } from 'src/common/prisma.module';
-
-async function resetDirectorTestData(dataSource: DataSource) {
-    await dataSource.query(`
-        TRUNCATE TABLE
-            movie_user_like,
-            movie_file,
-            movie_genres_genre,
-            movie,
-            movie_detail,
-            genre,
-            director,
-            "user"
-        RESTART IDENTITY CASCADE
-    `);
-}
 
 describe('DirectorService - Integration Test', () => {
     let service: DirectorService;
-    let dataSource: DataSource;
+    let prisma: PrismaService;
     let moduleRef: TestingModule;
 
     const baseDto = () => ({
@@ -35,23 +19,21 @@ describe('DirectorService - Integration Test', () => {
 
     beforeAll(async () => {
         moduleRef = await Test.createTestingModule({
-            imports: [...integrationTestImports(), PrismaModule],
+            imports: [...integrationTestImports()],
             providers: [DirectorService],
         }).compile();
 
         service = moduleRef.get(DirectorService);
-        dataSource = moduleRef.get(DataSource);
+        prisma = moduleRef.get(PrismaService);
     }, 30_000);
 
     afterAll(async () => {
-        if (dataSource?.isInitialized) {
-            await dataSource.destroy();
-        }
+        await prisma?.$disconnect();
         await moduleRef?.close();
     });
 
     beforeEach(async () => {
-        await resetDirectorTestData(dataSource);
+        await resetIntegrationTestData(prisma);
     });
 
     it('should be defined', () => {

@@ -2,55 +2,32 @@ import '../../test/load-integration-env';
 
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { DataSource } from 'typeorm';
-import { integrationTestImports } from '../../test/integration-db.helpers';
-import { Director } from 'src/director/entity/director.entity';
-import { Movie } from 'src/movie/entity/movie.entity';
-import { MovieDetail } from 'src/movie/entity/movie-detail.entity';
-import { User } from 'src/user/entity/user.entity';
-import { Genre } from './entity/genre.entity';
+import { PrismaService } from 'src/common/prisma.service';
+import { integrationTestImports, resetIntegrationTestData } from '../../test/integration-db.helpers';
 import { GenreService } from './genre.service';
-import { PrismaModule } from 'src/common/prisma.module';
-
-async function resetGenreTestData(dataSource: DataSource) {
-    await dataSource.query(`
-        TRUNCATE TABLE
-            movie_user_like,
-            movie_file,
-            movie_genres_genre,
-            movie,
-            movie_detail,
-            genre,
-            director,
-            "user"
-        RESTART IDENTITY CASCADE
-    `);
-}
 
 describe('GenreService - Integration Test', () => {
     let service: GenreService;
-    let dataSource: DataSource;
+    let prisma: PrismaService;
     let moduleRef: TestingModule;
 
     beforeAll(async () => {
         moduleRef = await Test.createTestingModule({
-            imports: [...integrationTestImports(), PrismaModule],
+            imports: [...integrationTestImports()],
             providers: [GenreService],
         }).compile();
 
         service = moduleRef.get(GenreService);
-        dataSource = moduleRef.get(DataSource);
+        prisma = moduleRef.get(PrismaService);
     }, 30_000);
 
     afterAll(async () => {
-        if (dataSource?.isInitialized) {
-            await dataSource.destroy();
-        }
+        await prisma?.$disconnect();
         await moduleRef?.close();
     });
 
     beforeEach(async () => {
-        await resetGenreTestData(dataSource);
+        await resetIntegrationTestData(prisma);
     });
 
     it('should be defined', () => {
@@ -100,43 +77,38 @@ describe('GenreService - Integration Test', () => {
         });
 
         it('throws ConflictException when genre is used by movies', async () => {
-            const genreRepository = dataSource.getRepository(Genre);
-            const movieRepository = dataSource.getRepository(Movie);
-            const movieDetailRepository = dataSource.getRepository(MovieDetail);
-            const directorRepository = dataSource.getRepository(Director);
-            const userRepository = dataSource.getRepository(User);
-
             const genre = await service.create({ name: 'linked-genre' });
-            const user = await userRepository.save(
-                userRepository.create({ email: 'genre-int@test.com', password: 'hashed' }),
-            );
-            const director = await directorRepository.save(
-                directorRepository.create({
+            const user = await prisma.user.create({
+                data: { email: 'genre-int@test.com', password: 'hashed' },
+            });
+            const director = await prisma.director.create({
+                data: {
                     name: 'dir',
                     dob: new Date('1990-01-01'),
                     nationality: 'KR',
-                }),
-            );
-
-            await movieRepository.save(
-                movieRepository.create({
+                },
+            });
+            const movieDetail = await prisma.movie_detail.create({
+                data: { detail: 'detail' },
+            });
+            const movie = await prisma.movie.create({
+                data: {
                     title: 'genre-linked-movie',
-                    detail: movieDetailRepository.create({ detail: 'detail' }),
-                    director,
-                    genres: [genre],
-                    creator: user,
-                    createAt: new Date(),
-                    updateAt: new Date(),
-                    files: [],
-                }),
-            );
-
-            const linked = await genreRepository.findOne({
-                where: { id: genre.id },
-                relations: { movies: true },
+                    detailId: movieDetail.id,
+                    directorId: director.id,
+                    creatorId: user.id,
+                },
+            });
+            await prisma.movie_genres_genre.create({
+                data: { movieId: movie.id, genreId: genre.id },
             });
 
-            expect(linked!.movies.length).toBeGreaterThan(0);
+            const linked = await prisma.genre.findUnique({
+                where: { id: genre.id },
+                include: { movie_genres_genre: true },
+            });
+
+            expect(linked!.movie_genres_genre.length).toBeGreaterThan(0);
 
             await expect(service.remove(genre.id)).rejects.toThrow(ConflictException);
         });
