@@ -17,6 +17,7 @@ jobs:
             DB_USERNAME: ${{ secrets.DB_USERNAME }}
             DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
             DB_DATABASE: ${{ secrets.DB_DATABASE }}
+            DATABASE_URL: ${{ secrets.DATABASE_URL }}
             SALT_ROUNDS: ${{ secrets.SALT_ROUNDS }}
             ACCESS_TOKEN_SECRET: ${{ secrets.ACCESS_TOKEN_SECRET }}
             REFRESH_TOKEN_SECRET: ${{ secrets.REFRESH_TOKEN_SECRET }}
@@ -26,22 +27,6 @@ jobs:
             SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
             AWS_REGION: ${{ secrets.AWS_REGION }}
             AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
-
-        services:
-            postgres:
-                image: postgres:16-alpine
-
-                env:
-                    POSTGRES_USER: ${{ secrets.DB_USERNAME }}
-                    POSTGRES_PASSWORD: ${{ secrets.DB_PASSWORD }}
-                    POSTGRES_DB: ${{ secrets.DB_DATABASE }}
-                options: >-
-                    --health-cmd pg_isready
-                    --health-interval 10s
-                    --health-timeout 5s
-                    --health-retries 5
-                ports:
-                    - 5432:5432
 
         steps:
             - name: Checkout code
@@ -54,7 +39,6 @@ jobs:
 
             - name: Create Env File
               run: |
-                  DATABASE_URL=$(node scripts/build-database-url.js --ssl-no-verify)
                   {
                     echo "ENV=${ENV:-prod}"
                     echo "DB_TYPE=${DB_TYPE:-postgres}"
@@ -74,7 +58,7 @@ jobs:
                     echo "AWS_REGION=${AWS_REGION}"
                     echo "AWS_S3_BUCKET=${AWS_S3_BUCKET}"
                   } > .env
-                  test -n "${DB_HOST}" && test -n "${DB_USERNAME}" && test -n "${DB_DATABASE}"
+                  test -n "${DATABASE_URL}" && test -n "${DB_HOST}" && test -n "${DB_USERNAME}" && test -n "${DB_DATABASE}"
 
             - name: Create Folders
               run: |
@@ -96,15 +80,10 @@ jobs:
                   test -f node_modules/@redis/client/dist/lib/commands/reply-utils.js
                   test -f generated/prisma/prisma/client.js || test -f dist/generated/prisma/prisma/client.js
 
-            - name: Run Prisma Migration (CI validation)
-              run: |
-                  export DATABASE_URL=$(node scripts/build-database-url.js --host=localhost)
-                  npm run migration:deploy
-
             - name: Run Prisma migrations (RDS)
-              run: |
-                  export DATABASE_URL=$(node scripts/build-database-url.js --ssl-no-verify)
-                  npm run migration:deploy
+              env:
+                  DATABASE_URL: ${{ secrets.DATABASE_URL }}
+              run: npm run migration:deploy
 
             - name: Zip Artifact For Deplyment
               run: zip -r deployment.zip .
