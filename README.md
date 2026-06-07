@@ -1,186 +1,198 @@
 # NESTJS-PROJECT-PIPELINE
 
-NestJS로 **영화·감독·장르 도메인 REST API**를 설계·구현한 백엔드 포트폴리오입니다. JWT 인증, RBAC, 커서 페이지네이션, 파일 업로드, 테스트, 로깅, AWS 배포까지 구현했으며, **User·Auth·Genre·Director·Movie는 Prisma로 전환**했습니다.
+NestJS 로 **영화·감독·장르 도메인 REST API** 를 설계·구현한 백엔드 포트폴리오입니다.
+JWT 인증, RBAC, 커서 페이지네이션, 파일 업로드, 실시간 채팅, 테스트, AWS 배포까지 직접 구현했으며,
+TypeORM 으로 구현한 핵심 도메인을 **Prisma 로 점진적 전환 (User·Auth·Genre·Director·Movie 완료)** 했습니다.
+
+> 상세 문서는 [`docs/`](docs/) 를 참고하세요.
 
 ---
 
 ## 1. 프로젝트 소개
 
 | 항목 | 내용 |
-| --- | --- |
-| **목적** | 실무에 가까운 API 설계(인증/인가·데이터 무결성·트랜잭션·캐시·업로드)를 NestJS로 구현 |
+|------|------|
+| **목적** | 영화 서비스 API 를 설계하며 인증·트랜잭션·캐싱·파일 업로드·배포 전 과정을 직접 구현 |
 | **도메인** | Movie, Director, Genre, User, Auth, Chat |
-| **DB** | PostgreSQL (로컬 Docker / prod: AWS RDS) |
-| **ORM** | **Prisma** (전환 완료 모듈) + **TypeORM** (잔여 모듈, 공존) |
+| **DB** | PostgreSQL (로컬 Docker / 운영: AWS RDS) |
+| **ORM** | Prisma (핵심 도메인 전환 완료) + TypeORM (점진적 전환 중) |
 | **API** | URI 버저닝 `v1`, Swagger `/api` |
-| **배포** | GitHub Actions `workflow_dispatch` → S3 → AWS Elastic Beanstalk |
+| **배포** | GitHub Actions → S3 → AWS Elastic Beanstalk |
 
 ---
 
-## 2. Prisma 전환 (완료)
+## 2. 기술적 의사결정
 
-| 모듈 | 내용 |
-| --- | --- |
-| **User** | CRUD, password 제외, update 이메일 중복 검증 |
-| **Auth** | 로그인·인증, `prisma.user` 조회 |
-| **Genre** | CRUD, `movie_genres_genre` M:N include |
-| **Director** | CRUD, `name_dob` 복합 unique 중복 검증 |
-| **Movie** | CRUD·좋아요·파일 이동, `prisma.$transaction`, likeCount 즉시 반영 |
-| **Common** | `parseCursorPagination` / `buildPrismaCursorWhere` (Prisma 커서) |
-| **인프라** | `PrismaService`(`@prisma/adapter-pg`), `build` 시 `prisma generate`, `DATABASE_URL` |
-| **CI** | build 전 `prisma generate`, 배포 env에 `DATABASE_URL`·Redis·`SESSION_SECRET` |
-| **테스트** | Movie·Genre·Director integration spec — `PrismaModule` 주입 |
+### TypeORM → Prisma 전환
 
----
+```
+이유:
+  TypeORM 의 암묵적 관계 관리 → 예상치 못한 쿼리 발생
+  Prisma 의 타입 안전한 쿼리 빌더 + 자동완성으로 개발 생산성 향상
+  select / omit / include 등 명시적 API 로 N+1 문제 방지
 
-## 3. 핵심 기능
+전환 완료:  User / Auth / Genre / Director / Movie
+전환 중:    Chat (WebSocket 트랜잭션 QueryRunner 의존)
+```
 
-- **도메인 CRUD**: Movie·Director·Genre 관계 모델링, FK 검증, 삭제·중복 규칙
-- **인증·인가**: Basic → JWT(access/refresh), Passport, 전역 Guard, RBAC(역할 계층)
-- **목록 API**: 커서·offset 페이지네이션, `title` 필터
-- **트랜잭션**: Movie — `prisma.$transaction` / Chat — `WsTransactionInterceptor` + QueryRunner
-- **파일 업로드**: temp 업로드 → Movie 생성 시 `public/movie/{id}` 이동 (MP4 1~3개)
-- **운영**: 토큰 블락·Rate limit, cron(temp 정리·like 집계), Winston 구조화 로깅
-- **문서·버전**: URI `/v1`, Swagger Basic/Bearer 구분
+### 커서 페이지네이션 채택
 
----
+```
+이유:
+  offset 방식은 대량 데이터에서 OFFSET N 이 앞 데이터를 전부 스캔
+  커서 방식은 마지막 ID 기준으로 WHERE id < cursor 인덱스 탐색
+  → 데이터 양에 관계없이 일정한 응답 속도 유지
+```
 
-## 4. 기술 스택
+### Prisma + TypeORM 공존 전략
 
-| 분류 | 기술 |
-| --- | --- |
-| **런타임** | NestJS, TypeScript |
-| **DB** | PostgreSQL, **Prisma**, TypeORM (전환 중) |
-| **검증·설정** | class-validator, class-transformer, @nestjs/config, Joi |
-| **인증** | bcrypt, @nestjs/jwt, Passport (local, jwt) |
-| **캐시·보안** | @nestjs/cache-manager, @nestjs/throttler |
-| **스케줄·로깅** | @nestjs/schedule, winston, nest-winston |
-| **문서** | @nestjs/swagger |
-| **파일** | multer, diskStorage |
-| **인프라** | Docker Compose, AWS EB, RDS, S3, GitHub Actions |
-| **테스트** | Jest, Supertest, @nestjs/testing |
+```
+두 ORM 이 같은 DB 를 바라볼 때 마이그레이션 충돌 발생
+→ Prisma 전용 DB 분리 (CREATE DATABASE prisma)
+  TypeORM migration:run (로컬)
+  Prisma migration:deploy (CI/운영)
+```
 
 ---
 
-## 5. 아키텍처
+## 3. 핵심 기능 구현
+
+| 기능 | 구현 내용 |
+|------|----------|
+| **인증·인가** | Basic Token → JWT (Access/Refresh 분리), 토큰 블랙리스트 캐싱으로 즉시 만료 처리 |
+| **RBAC** | admin(0) · paidUser(1) · user(2) 역할 계층, `@RBAC()` 데코레이터 + APP_GUARD |
+| **트랜잭션** | Movie — `prisma.$transaction` / Chat — `WsTransactionInterceptor` + QueryRunner |
+| **파일 업로드** | temp 업로드 → Movie 생성 시 `public/movie/{id}` 이동 (MP4 1~3개) |
+| **실시간 채팅** | Socket.IO Gateway, Namespace/Room, handleConnection 에서 JWT 검증·연결 차단 |
+| **캐싱** | JWT 검증 결과 캐싱으로 재검증 스킵, 토큰 블랙리스트, Rate Limiting |
+| **로깅** | Winston 구조화 로깅, 요청/응답 Interceptor 로 전 구간 기록 |
+| **스케줄링** | Cron 으로 temp 폴더 자동 정리 · 좋아요 집계 주기 실행 |
+
+---
+
+## 4. 아키텍처
 
 ```
 AppModule
-├── ConfigModule (Joi) · TypeOrmModule (잔여) · PrismaModule (전환 모듈)
+├── ConfigModule (Joi 검증) · TypeOrmModule (잔여) · PrismaModule (전환 도메인)
 ├── Movie / Director / Genre / User / Auth / Common / Chat
 ├── ScheduleModule · WinstonModule
-├── APP_GUARD: Throttler → Auth → RBAC
-├── APP_FILTER: Forbidden, QueryFailed
-└── BearerTokenMiddleware (v1/auth/login·register 제외)
+├── APP_GUARD: Throttler → AuthGuard → RBACGuard  ← 순서 중요
+├── APP_FILTER: ForbiddenException, QueryFailedError
+└── BearerTokenMiddleware  (v1/auth/login·register 제외 전 구간 적용)
 
-main.ts → URI v1 · Swagger /api · ValidationPipe
+main.ts → URI v1 · Swagger /api · ValidationPipe · CORS · Session (Redis)
 ```
 
-**Movie 생성 흐름**: `CreateMovieDto.files`(temp ref) → temp 검증 → `prisma.$transaction`으로 movie·detail·genre M:N·file 저장 → `public/movie/{id}` 이동
+**Movie 생성 흐름**
 
-**회원 생성**: `POST /v1/auth/register` · `POST /v1/user` → 공통 **`UserService.create`**
+```
+POST /v1/movie
+  → CreateMovieDto (파일 ref 포함)
+  → temp 파일 존재 검증
+  → prisma.$transaction (movie · detail · genre M:N · file 저장 원자성 보장)
+  → public/movie/{id} 폴더로 파일 이동
+```
 
-자세한 모듈·요청 순서는 [개발 과정](./docs/development-log.md)을 참고하세요.
+**인증 흐름**
+
+```
+회원가입 / 로그인  →  Basic {base64("email:password")}
+API 호출          →  Bearer {accessToken}  →  BearerTokenMiddleware 검증
+토큰 재발급        →  Bearer {refreshToken}
+로그아웃           →  토큰 블랙리스트 캐시 등록  →  이후 요청 즉시 차단
+```
 
 ---
 
-## 6. ERD / 도메인 관계
+## 5. ERD
 
 ```
 Movie ──1:1── MovieDetail
 Movie ──N:M── Genre   (movie_genres_genre)
 Movie ──N:1── Director
+MovieUserLike ── userId + movieId (복합 PK)
 User (email, password, role)
 ```
 
-### Role (숫자가 작을수록 높은 권한)
+---
 
-| 값 | 역할 |
-| --- | --- |
-| `0` | `admin` |
-| `1` | `paidUser` |
-| `2` | `user` (기본값) |
+## 6. 기술 스택
+
+| 분류 | 기술 |
+|------|------|
+| **런타임** | NestJS, TypeScript |
+| **DB** | PostgreSQL, Prisma, TypeORM |
+| **검증·설정** | class-validator, class-transformer, @nestjs/config, Joi |
+| **인증** | bcrypt, @nestjs/jwt, Passport (local, jwt) |
+| **캐시·보안** | @nestjs/cache-manager (keyv/Redis), @nestjs/throttler |
+| **실시간** | Socket.IO, @nestjs/websockets |
+| **스케줄·로깅** | @nestjs/schedule, winston, nest-winston |
+| **파일** | multer, diskStorage, fluent-ffmpeg |
+| **문서** | @nestjs/swagger |
+| **인프라** | Docker Compose, AWS EB, RDS, S3, ElastiCache (Redis), GitHub Actions |
+| **테스트** | Jest, Supertest, @nestjs/testing |
 
 ---
 
-## 7. 인증/인가 흐름
-
-1. **BearerTokenMiddleware** — JWT decode·verify, 토큰 블락 확인 → `req.user`
-2. **AuthGuard** — `@Public`이 아니면 access 토큰·user 필수
-3. **RBACGuard** — `@RBAC(Role)` 시 `user.role <= 요구 role`
-
-| 진입 | 방식 |
-| --- | --- |
-| 회원가입 | `POST /v1/auth/register` (Basic) |
-| 로그인 | Basic → access·refresh JWT |
-| API 호출 | `Authorization: Bearer {accessToken}` |
-| 로그아웃 | `POST /v1/auth/token/block` (캐시 블락) |
-
----
-
-## 8. 주요 API
-
-| 모듈 | 대표 엔드포인트 |
-| --- | --- |
-| Auth | `POST /v1/auth/register`, `login`, `GET /v1/auth/private`, `POST /v1/auth/token/access` |
-| Movie | `GET /v1/movie` (커서), `POST /v1/movie`, like/unlike |
-| Director / Genre | CRUD + RBAC |
-| Common | `POST /v1/common/video` (temp 업로드) |
-
-전체 목록·권한·Swagger 사용법: **[API 요약](./docs/api.md)**
-
----
-
-## 9. 실행 방법
-
-### 사전 요구
-
-- Node.js, pnpm (또는 npm)
-- Docker (PostgreSQL)
-
-### 로컬 기동
+## 7. 실행 방법
 
 ```bash
 # 1. 의존성
 pnpm install
 
-# 2. .env 설정 (DB_*, DATABASE_URL, SALT_ROUNDS, JWT secrets 등)
+# 2. .env 설정
+# DB_*, DATABASE_URL, SALT_ROUNDS, JWT secrets, REDIS_*, SESSION_SECRET 등
 
-# 3. PostgreSQL
+# 3. PostgreSQL + Redis
 docker compose up -d
 
-# 4. Prisma 클라이언트 생성 + 개발 서버 (포트 3001)
+# 4. 개발 서버 (포트 3001)
 pnpm start:dev
 ```
 
 - Swagger: `http://localhost:3001/api`
 - 수동 테스트 UI: `http://localhost:3001/public/movie/index.html`
 
-`ENV=dev`일 때 TypeORM `synchronize: true`로 스키마가 자동 반영됩니다. Prisma 스키마는 `prisma/schema.prisma`(DB introspect 기준)를 사용합니다. prod/migration은 [배포 문서](./docs/deployment.md)를 참고하세요.
+`ENV=dev` 일 때 TypeORM `synchronize: true` 로 스키마 자동 반영
+Prisma 스키마는 `prisma/schema.prisma` 기준
 
 ---
 
-## 10. 테스트
+## 8. 테스트
 
 ```bash
-pnpm db:test:create    # .env.test 준비 후
-pnpm test              # 단위
-pnpm test:integration  # 통합 (--runInBand)
-pnpm test:e2e          # E2E
+pnpm test                # 단위 테스트
+pnpm test:integration    # 통합 테스트 (--runInBand)
+pnpm test:e2e            # E2E 테스트
 ```
 
-상세 명령·시드 계정·E2E 시나리오: **[테스트 문서](./docs/testing.md)**
+---
+
+## 9. 배포
+
+`main` 브랜치 push → GitHub Actions 자동 실행
+
+```
+Install (npm ci) → Build (prisma generate + nest build)
+  → Prisma migration:deploy (RDS)
+  → Zip → S3 → Elastic Beanstalk
+```
+
+- **RDS SSL**: `sslmode=no-verify` + `PrismaPg ssl.rejectUnauthorized: false`
+- **Redis**: ElastiCache Primary Endpoint (localhost 아님)
+- **Procfile**: `web: node dist/src/main.js`
+- prod: `synchronize: false`, `DATABASE_URL` · `SESSION_SECRET` · Redis Secrets 주입
 
 ---
 
-## 11. 배포
+## 10. 배포 중 해결한 주요 이슈
 
-GitHub Actions **workflow_dispatch**로 build → **migration:run** (RDS, TypeORM) → S3 → Elastic Beanstalk 배포합니다.
-
-- `npm run build` = `prisma generate` + `nest build`
-- 런타임: `node dist/main.js` (`Procfile`)
-- prod: `synchronize: false`, RDS SSL, `DATABASE_URL` 주입
-
-Secrets·RDS 초기화·배포 후 확인: **[배포 문서](./docs/deployment.md)**
-
----
+| 이슈 | 원인 | 해결 |
+|------|------|------|
+| EB 502 Bad Gateway | 앱 기동 전 크래시 | `eb.stdout.log` 로 원인 추적 |
+| `reply-utils` MODULE_NOT_FOUND | redis/keyv 버전 충돌 | `package.json` overrides + `npm ci` |
+| Prisma P1011 SSL | RDS 자체 서명 인증서 | `sslmode=no-verify` + `rejectUnauthorized: false` |
+| Prisma P3005 | TypeORM 기존 스키마 충돌 | `migrate resolve --applied` baseline |
+| DB_PASSWORD 특수문자 | URL 파싱 오류 P1013 | `printf` 로 .env 안전 생성 |
+| TS5011 재발 | Prisma generated/ 가 src 바깥 | `rootDir: "."` 로 변경 |

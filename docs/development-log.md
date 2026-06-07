@@ -1,6 +1,6 @@
 # 개발 과정
 
-영화·감독·장르 REST API를 **11단계**로 확장한 기록입니다.  
+영화·감독·장르 REST API를 **12단계**로 확장한 기록입니다.  
 아래 **로드맵 표**로 흐름을 먼저 보고, 필요한 단계만 펼쳐 읽으면 됩니다.
 
 ---
@@ -20,6 +20,7 @@
 | 9 | User 정리 | `UserService.create` 통합, 단위 테스트 |
 | 10 | 테스트 확장 | 통합·E2E, 테스트 헬퍼 |
 | 11 | 배포 | EB, GitHub Actions, Migration |
+| 12 | Prisma 전환 | User·Auth·Genre·Director·Movie Prisma 이전 |
 
 ```mermaid
 flowchart LR
@@ -41,8 +42,10 @@ flowchart LR
   subgraph quality["품질·운영"]
     S10[10 테스트]
     S11[11 배포]
+    S12[12 Prisma]
   end
   foundation --> security --> features --> quality
+  S11 --> S12
 ```
 
 ---
@@ -202,18 +205,66 @@ flowchart LR
 
 ```
 main push → GitHub Actions
-  → build → migration:run (RDS, SSL)
+  → build (prisma generate + nest build)
+  → migration:deploy (Prisma, RDS SSL)
   → S3 → Elastic Beanstalk
 ```
 
 | 항목 | 내용 |
 |------|------|
-| 런타임 | `Procfile` → `node dist/main.js` |
+| 런타임 | `Procfile` → `node dist/src/main.js` |
 | DB | prod: SSL, `synchronize: false` |
-| Migration | `data-source.ts`, `npm run migration:run` |
-| 기타 | S3 presigned URL, IAM(CI용) |
+| Migration | TypeORM `migration:run` (로컬) · Prisma `migration:deploy` (CI) |
+| CI env | `DATABASE_URL`, Redis, `SESSION_SECRET` 주입 |
+| 기타 | S3 presigned URL, IAM(CI용), 빌드 산출물 검증 |
 
 → Secrets·RDS 초기화는 [배포 문서](./deployment.md)
+
+---
+
+### 12단계 · TypeORM → Prisma 전환
+
+> **목표** — 도메인 서비스를 Prisma로 이전, TypeORM과 공존
+
+**전환 완료 모듈**
+
+| 모듈 | 변경 |
+|------|------|
+| User | `PrismaService` CRUD, password 응답 제외, update 이메일 중복 검증 |
+| Auth | `prisma.user` 인증, RBAC `Role` enum 문자열 비교 |
+| Genre | CRUD, `include: { movie_genres_genre }` M:N |
+| Director | CRUD, `name_dob` 복합 unique 중복 검증 |
+| Movie | CRUD·좋아요·파일, `prisma.$transaction`, likeCount 즉시 반영 |
+| Common | `parseCursorPagination` / `buildPrismaCursorWhere` |
+
+**인프라**
+
+| 항목 | 내용 |
+|------|------|
+| Prisma | `prisma/schema.prisma` (DB introspect), `@prisma/adapter-pg` |
+| 빌드 | `prisma generate && nest build` |
+| env | `DATABASE_URL` 필수 (Joi 검증) |
+| 스키마 | DB에 없는 `movie.genreId` 직접 관계 제거 → `movie_genres_genre` M:N만 사용 |
+| 모듈 | auth·genre·director·movie에서 `TypeOrmModule.forFeature` 제거 |
+| 테스트 | Movie·Genre·Director integration spec — `PrismaModule` 주입 |
+
+**Movie 변경 요약**
+
+- 생성·수정·삭제·좋아요: `TransactionInterceptor` → `prisma.$transaction`
+- 목록: TypeORM QueryBuilder → `findMany` + `parseCursorPagination`
+- `findAll` count: pg DeprecationWarning 방지를 위해 `findMany`·`count` 순차 실행
+
+**CI·배포 (Prisma migration)**
+
+- CI: `npm run migration:deploy` — P3005 시 `20260605052743_init` baseline
+- 로컬 RDS: `scripts/run-prisma-rds-migration.js` (테이블 없으면 `db push`)
+- `Procfile`: `node dist/src/main.js`
+
+**아직 TypeORM**
+
+- `AppModule` `TypeOrmModule.forRoot` (Chat·Tasks용)
+- `ChatService`, `TasksService`
+- 로컬 schema 변경: `npm run migration:run` (`data-source.ts`)
 
 ---
 
@@ -223,12 +274,12 @@ main push → GitHub Actions
 
 | 영역 | 원칙 |
 |------|------|
-| 레이어 | Controller ↔ Service ↔ Repository/QueryBuilder |
+| 레이어 | Controller ↔ Service ↔ Prisma / TypeORM (전환 중) |
 | 회원 | Auth·User 진입점 달라도 **`UserService.create`** 한 곳 |
-| 데이터 | FK 검증, N:M relation, 삭제 시 연관 확인 |
-| 트랜잭션 | commit/rollback은 **인터셉터**에서 일원화 |
+| 데이터 | FK 검증, N:M(`movie_genres_genre`), 삭제 시 연관 확인 |
+| 트랜잭션 | Movie·좋아요 — `prisma.$transaction` / Chat — `WsTransactionInterceptor` |
 | 인증 | Middleware(파싱·블락) → Guard → RBAC |
-| 목록 | offset 학습 후 **커서**로 확장 |
+| 목록 | offset + 커서 (`parseCursorPagination` — Prisma) |
 | 업로드 | Multer 저장 + Pipe 검증 (단일/복수 분리) |
 | 운영 | cron으로 temp·집계 — API와 분리 |
 | 로깅 | API(`error.log`) vs cron(`tasks.log`) 분리 |

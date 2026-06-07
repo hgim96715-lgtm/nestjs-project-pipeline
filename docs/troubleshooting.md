@@ -33,6 +33,18 @@
 | CI `Missing script: typeorm` | `npm run migration:run` 사용 (`package.json` scripts) |
 | CI migration `DB_TYPE undefined` | GitHub Secrets에 `DB_*` 설정, job `env`로 주입 |
 | CI/RDS `no encryption` | RDS는 **SSL 필수** — `data-source.ts` 원격 host SSL, `app.module` prod SSL |
-| migration `already exists` | `synchronize`로 만든 테이블 + 빈 `migrations` → **빈 RDS**면 DROP SCHEMA 후 `migration:run` |
+| migration `already exists` | `synchronize`로 만든 테이블 + 빈 `migrations` → **빈 RDS**면 DROP SCHEMA 후 `migration:run` / `migration:deploy` |
+| Prisma P3005 (RDS baseline) | 기존 TypeORM 스키마 — `npx prisma migrate resolve --applied "20260605052743_init"` 후 `migration:deploy`. 또는 `node scripts/run-prisma-rds-migration.js` |
+| RDS core 테이블 없음 | `scripts/run-prisma-rds-migration.js`가 `prisma db push` + baseline 후 deploy |
 | S3 deploy `AccessDenied` | IAM user에 `s3:PutObject`(버킷 ARN), EB API 권한 — placeholder 버킷명 아닌 **실제 버킷명** |
 | Swagger register `authorization required` | Try it out **전에** Authorize → **Basic** (이메일/비밀번호). body JSON 아님 |
+| EB 502 Bad Gateway | 앱 기동 실패 — EB Logs 확인. `.env`에 `AWS_REGION`·`AWS_S3_BUCKET`·`DATABASE_URL` 누락, Redis/RDS 연결 실패 흔함 |
+| CI `Cannot find module .../generated/prisma` | `build` 스크립트에 `prisma generate` 포함 — `generated/`는 gitignore |
+| Prisma `movie.genreId does not exist` | DB에 없는 컬럼 — `schema.prisma`에서 직접 FK 제거, `movie_genres_genre` M:N 사용 |
+| Prisma `findUnique({ name, dob })` 오류 | 복합 unique는 `name_dob: { name, dob }` 형식 |
+| Genre `relations: { movies }` 오류 | TypeORM 문법 — Prisma는 `include: { movie_genres_genre }` |
+| RBAC 403 (Prisma user) | `Role` enum 문자열 비교 (`user.role <= requiredRole`) |
+| `GET /movie` pg DeprecationWarning | 동일 연결에서 `findMany`·`count` 병렬 실행 → 순차 조회 |
+| Jest `Cannot find module ./internal/class.js` | `package.json` jest `moduleNameMapper`에 `^(\\.{1,2}/.*)\\.js$` → `$1` |
+| Jest `experimental-vm-modules` (Prisma adapter) | `test:integration`에 `NODE_OPTIONS=--experimental-vm-modules` 포함 |
+| 통합 테스트 TypeORM entity metadata | `integration-db.helpers` — TypeORM 제거, Prisma `resetIntegrationTestData` 사용 |

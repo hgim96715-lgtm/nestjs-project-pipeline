@@ -21,7 +21,7 @@
 
 | 영역 | 내용 |
 | --- | --- |
-| **Movie** | 커서 페이지네이션 목록·단건 조회(**없는 id → 404**), 트랜잭션 기반 생성·수정·삭제, MP4 다중 업로드(1~3), like/unlike |
+| **Movie** | 커서 페이지네이션 목록·단건 조회(**없는 id → 404**), `prisma.$transaction` 기반 생성·수정·삭제, MP4 다중 업로드(1~3), like/unlike (likeCount 즉시 반영) |
 | **Director** | CRUD, `name + dob` 중복 검증, RBAC (생성·삭제 admin, 수정 paidUser) |
 | **Genre** | CRUD, 이름 중복·연결 영화 삭제 제한, 조회 Public |
 | **User** | CRUD, `create` 시 이메일 중복·bcrypt 해시, password 응답 제외 (`ClassSerializerInterceptor`) |
@@ -65,8 +65,8 @@
 
 | 영역 | 내용 |
 | --- | --- |
-| 페이지네이션 | offset + **커서** (`CommonService`) |
-| 트랜잭션 | `TransactionInterceptor` + QueryRunner |
+| 페이지네이션 | offset + **커서** (`parseCursorPagination` / `buildPrismaCursorWhere`) |
+| 트랜잭션 | Movie·좋아요 — `prisma.$transaction` · Chat — `WsTransactionInterceptor` |
 | 파일 업로드 | `POST /v1/common/video` — temp 업로드 후 `POST /v1/movie`에서 `files` 참조 |
 | Cron | temp 만료 파일 삭제, 영화 like/dislike 집계 동기화 |
 
